@@ -1,0 +1,18 @@
+use_default_settings: true
+
+server:
+  secret_key: "CHANGE_THIS_TO_A_LONG_RANDOM_SECRET"
+  bind_address: "0.0.0.0:8080"
+
+search:
+  safe_search: 0
+  autocomplete: "google"
+  formats:
+    - html
+    - json
+
+ui:
+  static_use_hash: true
+
+valkey:
+  url: redis://:Aungan%4001721@jarvis-redis:6379/0

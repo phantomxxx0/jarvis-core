@@ -1,0 +1,5 @@
+include:
+  - compose/infrastructure.yml
+  - compose/ai.yml
+  - compose/search.yml
+  - compose/automation.yml

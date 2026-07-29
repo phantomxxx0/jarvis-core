@@ -1,0 +1,23 @@
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: jarvis-open-webui
+    restart: unless-stopped
+
+    ports:
+      - "${OPENWEBUI_PORT}:8080"
+
+    environment:
+      OLLAMA_BASE_URL: http://192.168.31.88:11434
+      WEBUI_SECRET_KEY: CHANGE_THIS_TO_A_LONG_RANDOM_SECRET
+
+    volumes:
+      - ../data/open-webui:/app/backend/data
+
+    networks:
+      - jarvis
+
+networks:
+  jarvis:
+    external: true
+    name: jarvis-network

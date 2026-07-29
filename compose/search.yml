@@ -1,0 +1,27 @@
+services:
+  searxng:
+    image: searxng/searxng:latest
+    container_name: jarvis-searxng
+    restart: unless-stopped
+
+    ports:
+      - "8081:8080"
+
+    volumes:
+      - ../config/searxng:/etc/searxng
+
+    environment:
+      SEARXNG_BASE_URL: http://192.168.31.140:8081/
+      UWSGI_WORKERS: 2
+      UWSGI_THREADS: 2
+
+    depends_on:
+      - redis
+
+    networks:
+      - jarvis
+
+networks:
+  jarvis:
+    external: true
+    name: jarvis-network
