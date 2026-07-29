@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
+import { UserRole } from '@jarvis/database';
+
 import { UsersRepository } from './users.repository';
 
 @Injectable()
@@ -18,5 +20,18 @@ export class UsersService {
 
   findByEmail(email: string) {
     return this.usersRepository.findByEmail(email);
+  }
+
+  create(data: {
+    email: string;
+    passwordHash: string;
+    name?: string;
+    role?: UserRole;
+  }) {
+    return this.usersRepository.create(data);
+  }
+
+  updateLastLogin(id: string) {
+    return this.usersRepository.updateLastLogin(id);
   }
 }
