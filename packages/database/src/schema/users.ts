@@ -9,13 +9,17 @@ import {
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
 
-  email: text('email').notNull().unique(),
+  email: text('email')
+    .notNull()
+    .unique(),
 
   name: text('name'),
 
   passwordHash: text('password_hash'),
 
-  role: text('role').notNull().default('USER'),
+  role: text('role')
+    .notNull()
+    .default('USER'),
 
   isActive: boolean('is_active')
     .notNull()
@@ -39,5 +43,6 @@ export const users = pgTable('users', {
     withTimezone: true,
   })
     .defaultNow()
+    .$onUpdate(() => new Date())
     .notNull(),
 });

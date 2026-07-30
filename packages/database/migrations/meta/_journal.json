@@ -15,6 +15,13 @@
       "when": 1785363036645,
       "tag": "0001_dark_risque",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785370809447,
+      "tag": "0002_steady_sunspot",
+      "breakpoints": true
     }
   ]
 }
