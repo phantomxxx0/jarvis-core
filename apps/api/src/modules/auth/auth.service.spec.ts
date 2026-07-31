@@ -79,3 +79,40 @@ describe('AuthService.refresh', () => {
     expect(sessionsService.updateRefreshTokenHash).not.toHaveBeenCalled();
   });
 });
+describe('AuthService.logout', () => {
+  const usersService = { findById: jest.fn() };
+  const sessionsService = {
+    revoke: jest.fn(),
+  };
+  const jwtService = {
+    verifyAsync: jest.fn(),
+    signAsync: jest.fn(),
+  };
+  const configService = {
+    getOrThrow: jest.fn().mockReturnValue('secret'),
+  };
+  const service = new AuthService(
+    usersService as unknown as UsersService,
+    sessionsService as unknown as SessionsService,
+    jwtService as unknown as JwtService,
+    configService as never,
+  );
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it('revokes the session for a valid sessionId', async () => {
+    sessionsService.revoke.mockResolvedValue({ id: 'session-id' });
+
+    await expect(service.logout('session-id')).resolves.toBeUndefined();
+    expect(sessionsService.revoke).toHaveBeenCalledWith('session-id');
+  });
+
+  it('does not throw when the session is already revoked or missing', async () => {
+    sessionsService.revoke.mockResolvedValue(null);
+
+    await expect(service.logout('session-id')).resolves.toBeUndefined();
+    expect(sessionsService.revoke).toHaveBeenCalledWith('session-id');
+  });
+});

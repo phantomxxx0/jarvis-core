@@ -133,6 +133,10 @@ export class AuthService {
     return tokens;
   }
 
+  async logout(sessionId: string): Promise<void> {
+    await this.sessionsService.revoke(sessionId);
+  }
+
   private async issueTokenPair(
     user: TokenUser,
     sessionMetadata: SessionMetadata,
