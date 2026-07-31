@@ -9,6 +9,7 @@ import {
   Post,
   Req,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
@@ -44,20 +45,24 @@ export class AuthController {
     return this.authService.refresh(dto.refreshToken);
   }
   @HttpCode(HttpStatus.NO_CONTENT)
+  @SkipThrottle()
   @Post('logout')
   async logout(@CurrentUser() user: JwtPayload): Promise<void> {
     await this.authService.logout(user.sessionId);
   }
   @HttpCode(HttpStatus.NO_CONTENT)
+  @SkipThrottle()
   @Post('logout-all')
   async logoutAll(@CurrentUser() user: JwtPayload): Promise<void> {
     await this.authService.logoutAll(user.id);
   }
+  @SkipThrottle()
   @Get('sessions')
   listSessions(@CurrentUser() user: JwtPayload) {
     return this.authService.listSessions(user.id);
   }
   @HttpCode(HttpStatus.NO_CONTENT)
+  @SkipThrottle()
   @Delete('sessions/:id')
   async revokeSession(
     @CurrentUser() user: JwtPayload,
@@ -65,6 +70,7 @@ export class AuthController {
   ): Promise<void> {
     await this.authService.revokeSession(user.id, id);
   }
+  @SkipThrottle()
   @Get('profile')
   profile(@CurrentUser() user: JwtPayload) {
     return user;
