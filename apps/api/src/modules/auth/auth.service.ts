@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -20,6 +21,17 @@ import type { SessionMetadata } from './interfaces/session-metadata.interface';
 type JwtExpiresIn = NonNullable<SignOptions['expiresIn']>;
 type TokenUser = { id: string; email: string; role: string };
 type RefreshTokenPayload = TokenUser & { sub: string };
+
+export interface SessionSummary {
+  id: string;
+  deviceName: string | null;
+  userAgent: string | null;
+  ipAddress: string | null;
+  isRevoked: boolean;
+  lastUsedAt: Date;
+  createdAt: Date;
+  expiresAt: Date;
+}
 
 const parseDuration = ms as unknown as (value: string) => number;
 
@@ -134,6 +146,35 @@ export class AuthService {
   }
 
   async logout(sessionId: string): Promise<void> {
+    await this.sessionsService.revoke(sessionId);
+  }
+
+  async logoutAll(userId: string): Promise<void> {
+    await this.sessionsService.revokeAllForUser(userId);
+  }
+
+  async listSessions(userId: string): Promise<SessionSummary[]> {
+    const sessions = await this.sessionsService.findByUserId(userId);
+
+    return sessions.map((session): SessionSummary => ({
+      id: session.id,
+      deviceName: session.deviceName,
+      userAgent: session.userAgent,
+      ipAddress: session.ipAddress,
+      isRevoked: session.isRevoked,
+      lastUsedAt: session.lastUsedAt,
+      createdAt: session.createdAt,
+      expiresAt: session.expiresAt,
+    }));
+  }
+
+  async revokeSession(userId: string, sessionId: string): Promise<void> {
+    const session = await this.sessionsService.findById(sessionId);
+
+    if (!session || session.userId !== userId) {
+      throw new NotFoundException('Session not found');
+    }
+
     await this.sessionsService.revoke(sessionId);
   }
 

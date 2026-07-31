@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { SessionsService } from '../sessions/sessions.service';
@@ -114,5 +114,139 @@ describe('AuthService.logout', () => {
 
     await expect(service.logout('session-id')).resolves.toBeUndefined();
     expect(sessionsService.revoke).toHaveBeenCalledWith('session-id');
+  });
+});
+describe('AuthService.logoutAll', () => {
+  const usersService = { findById: jest.fn() };
+  const sessionsService = {
+    revokeAllForUser: jest.fn(),
+  };
+  const jwtService = {
+    verifyAsync: jest.fn(),
+    signAsync: jest.fn(),
+  };
+  const configService = {
+    getOrThrow: jest.fn().mockReturnValue('secret'),
+  };
+  const service = new AuthService(
+    usersService as unknown as UsersService,
+    sessionsService as unknown as SessionsService,
+    jwtService as unknown as JwtService,
+    configService as never,
+  );
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it('revokes all sessions for the given userId', async () => {
+    sessionsService.revokeAllForUser.mockResolvedValue(undefined);
+
+    await expect(service.logoutAll('user-id')).resolves.toBeUndefined();
+    expect(sessionsService.revokeAllForUser).toHaveBeenCalledWith('user-id');
+  });
+
+  it('does not throw when the user has no active sessions', async () => {
+    sessionsService.revokeAllForUser.mockResolvedValue(undefined);
+
+    await expect(service.logoutAll('user-id')).resolves.toBeUndefined();
+    expect(sessionsService.revokeAllForUser).toHaveBeenCalledWith('user-id');
+  });
+});
+describe('AuthService.sessions', () => {
+  const usersService = { findById: jest.fn() };
+  const sessionsService = {
+    findByUserId: jest.fn(),
+    findById: jest.fn(),
+    revoke: jest.fn(),
+  };
+  const jwtService = {
+    verifyAsync: jest.fn(),
+    signAsync: jest.fn(),
+  };
+  const configService = {
+    getOrThrow: jest.fn().mockReturnValue('secret'),
+  };
+  const service = new AuthService(
+    usersService as unknown as UsersService,
+    sessionsService as unknown as SessionsService,
+    jwtService as unknown as JwtService,
+    configService as never,
+  );
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  describe('listSessions', () => {
+    it('returns mapped sessions without refreshTokenHash or userId', async () => {
+      sessionsService.findByUserId.mockResolvedValue([
+        {
+          id: 'session-id',
+          userId: 'user-id',
+          refreshTokenHash: 'secret-hash',
+          deviceName: 'Chrome on macOS',
+          userAgent: 'Mozilla/5.0',
+          ipAddress: '127.0.0.1',
+          isRevoked: false,
+          lastUsedAt: new Date('2026-01-01T00:00:00Z'),
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+          expiresAt: new Date('2026-02-01T00:00:00Z'),
+        },
+      ]);
+
+      const result = await service.listSessions('user-id');
+
+      expect(result).toEqual([
+        {
+          id: 'session-id',
+          deviceName: 'Chrome on macOS',
+          userAgent: 'Mozilla/5.0',
+          ipAddress: '127.0.0.1',
+          isRevoked: false,
+          lastUsedAt: new Date('2026-01-01T00:00:00Z'),
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+          expiresAt: new Date('2026-02-01T00:00:00Z'),
+        },
+      ]);
+      expect(result[0]).not.toHaveProperty('refreshTokenHash');
+      expect(result[0]).not.toHaveProperty('userId');
+    });
+  });
+
+  describe('revokeSession', () => {
+    it('revokes a session owned by the current user', async () => {
+      sessionsService.findById.mockResolvedValue({
+        id: 'session-id',
+        userId: 'user-id',
+      });
+      sessionsService.revoke.mockResolvedValue({ id: 'session-id' });
+
+      await expect(
+        service.revokeSession('user-id', 'session-id'),
+      ).resolves.toBeUndefined();
+      expect(sessionsService.revoke).toHaveBeenCalledWith('session-id');
+    });
+
+    it('throws NotFoundException when the session does not exist', async () => {
+      sessionsService.findById.mockResolvedValue(null);
+
+      await expect(
+        service.revokeSession('user-id', 'missing-session'),
+      ).rejects.toThrow(NotFoundException);
+      expect(sessionsService.revoke).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when the session belongs to another user', async () => {
+      sessionsService.findById.mockResolvedValue({
+        id: 'session-id',
+        userId: 'other-user-id',
+      });
+
+      await expect(
+        service.revokeSession('user-id', 'session-id'),
+      ).rejects.toThrow(NotFoundException);
+      expect(sessionsService.revoke).not.toHaveBeenCalled();
+    });
   });
 });

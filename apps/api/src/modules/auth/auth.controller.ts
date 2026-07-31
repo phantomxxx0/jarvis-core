@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Req,
 } from '@nestjs/common';
@@ -45,6 +47,23 @@ export class AuthController {
   @Post('logout')
   async logout(@CurrentUser() user: JwtPayload): Promise<void> {
     await this.authService.logout(user.sessionId);
+  }
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('logout-all')
+  async logoutAll(@CurrentUser() user: JwtPayload): Promise<void> {
+    await this.authService.logoutAll(user.id);
+  }
+  @Get('sessions')
+  listSessions(@CurrentUser() user: JwtPayload) {
+    return this.authService.listSessions(user.id);
+  }
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Delete('sessions/:id')
+  async revokeSession(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+  ): Promise<void> {
+    await this.authService.revokeSession(user.id, id);
   }
   @Get('profile')
   profile(@CurrentUser() user: JwtPayload) {
