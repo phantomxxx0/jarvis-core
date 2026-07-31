@@ -120,7 +120,7 @@ export class AuthService {
     }
 
     if (!session) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      return this.handleRefreshTokenReuse(payload.sub);
     }
 
     const user = await this.usersService.findById(payload.sub);
@@ -176,6 +176,15 @@ export class AuthService {
     }
 
     await this.sessionsService.revoke(sessionId);
+  }
+
+  private async handleRefreshTokenReuse(userId: string): Promise<never> {
+    await this.sessionsService.revokeAllForUser(userId);
+
+    // Extension point: emit an audit/security log entry here once
+    // audit logging is implemented (Phase 9C+).
+
+    throw new UnauthorizedException('Invalid or expired refresh token');
   }
 
   private async issueTokenPair(

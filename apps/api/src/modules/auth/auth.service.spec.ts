@@ -21,6 +21,7 @@ describe('AuthService.refresh', () => {
     updateRefreshTokenHash: jest.fn(),
     updateLastUsedAt: jest.fn(),
     revoke: jest.fn(),
+    revokeAllForUser: jest.fn(),
   };
   const jwtService = {
     verifyAsync: jest.fn(),
@@ -77,6 +78,17 @@ describe('AuthService.refresh', () => {
       UnauthorizedException,
     );
     expect(sessionsService.updateRefreshTokenHash).not.toHaveBeenCalled();
+    expect(sessionsService.revokeAllForUser).toHaveBeenCalledWith('user-id');
+    expect(sessionsService.revokeAllForUser).toHaveBeenCalledTimes(1);
+  });
+  it('treats refresh token reuse as a security event: revokes all sessions and rejects', async () => {
+    (argon2.verify as unknown as jest.Mock).mockResolvedValue(false);
+
+    await expect(service.refresh('stolen-refresh-token')).rejects.toThrow(
+      UnauthorizedException,
+    );
+    expect(sessionsService.revokeAllForUser).toHaveBeenCalledWith('user-id');
+    expect(sessionsService.revokeAllForUser).toHaveBeenCalledTimes(1);
   });
 });
 describe('AuthService.logout', () => {
