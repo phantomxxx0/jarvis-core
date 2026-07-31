@@ -1,6 +1,7 @@
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
+import { AuditService } from '../audit/audit.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
@@ -8,6 +9,109 @@ jest.mock('argon2', () => ({
   hash: jest.fn(),
   verify: jest.fn(),
 }));
+describe('AuthService.login', () => {
+  const user = {
+    id: 'user-id',
+    email: 'user@example.com',
+    passwordHash: 'stored-hash',
+    role: 'USER',
+    name: 'Test User',
+    isActive: true,
+    createdAt: new Date('2026-01-01T00:00:00Z'),
+    updatedAt: new Date('2026-01-01T00:00:00Z'),
+  };
+  const sessionMetadata = {
+    deviceName: 'Chrome on macOS',
+    userAgent: 'Mozilla/5.0',
+    ipAddress: '127.0.0.1',
+  };
+  const usersService = {
+    findByEmail: jest.fn(),
+    updateLastLogin: jest.fn(),
+  };
+  const sessionsService = {
+    createSession: jest.fn(),
+  };
+  const jwtService = {
+    signAsync: jest.fn(),
+  };
+  const configService = {
+    getOrThrow: jest.fn().mockReturnValue('secret'),
+  };
+  const auditService: Partial<AuditService> = {
+    loginSuccess: jest.fn(),
+    loginFailure: jest.fn(),
+  };
+  const service = new AuthService(
+    usersService as unknown as UsersService,
+    sessionsService as unknown as SessionsService,
+    jwtService as unknown as JwtService,
+    configService as never,
+    auditService as unknown as AuditService,
+  );
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    configService.getOrThrow.mockReturnValue('secret');
+    (argon2.verify as unknown as jest.Mock).mockResolvedValue(true);
+    (argon2.hash as unknown as jest.Mock).mockResolvedValue('token-hash');
+    jwtService.signAsync.mockResolvedValue('token');
+    usersService.findByEmail.mockResolvedValue(user);
+    usersService.updateLastLogin.mockResolvedValue(undefined);
+    sessionsService.createSession.mockResolvedValue({ id: 'session-id' });
+  });
+
+  it('logs LoginSuccess after a successful login', async () => {
+    await service.login(
+      { email: user.email, password: 'correct-password' },
+      sessionMetadata,
+    );
+
+    expect(auditService.loginSuccess).toHaveBeenCalledWith({
+      userId: user.id,
+      email: user.email,
+      ipAddress: sessionMetadata.ipAddress,
+      userAgent: sessionMetadata.userAgent,
+    });
+    expect(auditService.loginFailure).not.toHaveBeenCalled();
+  });
+
+  it('logs LoginFailure for an invalid password', async () => {
+    (argon2.verify as unknown as jest.Mock).mockResolvedValue(false);
+
+    await expect(
+      service.login(
+        { email: user.email, password: 'wrong-password' },
+        sessionMetadata,
+      ),
+    ).rejects.toThrow(UnauthorizedException);
+
+    expect(auditService.loginFailure).toHaveBeenCalledWith({
+      email: user.email,
+      ipAddress: sessionMetadata.ipAddress,
+      userAgent: sessionMetadata.userAgent,
+    });
+    expect(auditService.loginSuccess).not.toHaveBeenCalled();
+  });
+
+  it('logs LoginFailure for an unknown email', async () => {
+    usersService.findByEmail.mockResolvedValue(null);
+
+    await expect(
+      service.login(
+        { email: 'missing@example.com', password: 'any-password' },
+        sessionMetadata,
+      ),
+    ).rejects.toThrow(UnauthorizedException);
+
+    expect(auditService.loginFailure).toHaveBeenCalledWith({
+      email: 'missing@example.com',
+      ipAddress: sessionMetadata.ipAddress,
+      userAgent: sessionMetadata.userAgent,
+    });
+    expect(auditService.loginSuccess).not.toHaveBeenCalled();
+  });
+});
 describe('AuthService.refresh', () => {
   const user = {
     id: 'user-id',
@@ -30,11 +134,15 @@ describe('AuthService.refresh', () => {
   const configService = {
     getOrThrow: jest.fn().mockReturnValue('secret'),
   };
+  const auditService: Partial<AuditService> = {
+    refreshTokenReuse: jest.fn(),
+  };
   const service = new AuthService(
     usersService as unknown as UsersService,
     sessionsService as unknown as SessionsService,
     jwtService as unknown as JwtService,
     configService as never,
+    auditService as unknown as AuditService,
   );
   beforeEach(() => {
     jest.resetAllMocks();
@@ -71,6 +179,7 @@ describe('AuthService.refresh', () => {
       'rotated-token-hash',
     );
     expect(sessionsService.updateLastUsedAt).toHaveBeenCalledWith('session-id');
+    expect(auditService.refreshTokenReuse).not.toHaveBeenCalled();
   });
   it('rejects when no session matches the stored refresh token hash', async () => {
     (argon2.verify as unknown as jest.Mock).mockResolvedValue(false);
@@ -80,6 +189,9 @@ describe('AuthService.refresh', () => {
     expect(sessionsService.updateRefreshTokenHash).not.toHaveBeenCalled();
     expect(sessionsService.revokeAllForUser).toHaveBeenCalledWith('user-id');
     expect(sessionsService.revokeAllForUser).toHaveBeenCalledTimes(1);
+    expect(auditService.refreshTokenReuse).toHaveBeenCalledWith({
+      userId: 'user-id',
+    });
   });
   it('treats refresh token reuse as a security event: revokes all sessions and rejects', async () => {
     (argon2.verify as unknown as jest.Mock).mockResolvedValue(false);
@@ -89,6 +201,9 @@ describe('AuthService.refresh', () => {
     );
     expect(sessionsService.revokeAllForUser).toHaveBeenCalledWith('user-id');
     expect(sessionsService.revokeAllForUser).toHaveBeenCalledTimes(1);
+    expect(auditService.refreshTokenReuse).toHaveBeenCalledWith({
+      userId: 'user-id',
+    });
   });
 });
 describe('AuthService.logout', () => {
@@ -103,11 +218,15 @@ describe('AuthService.logout', () => {
   const configService = {
     getOrThrow: jest.fn().mockReturnValue('secret'),
   };
+  const auditService: Partial<AuditService> = {
+    logout: jest.fn(),
+  };
   const service = new AuthService(
     usersService as unknown as UsersService,
     sessionsService as unknown as SessionsService,
     jwtService as unknown as JwtService,
     configService as never,
+    auditService as unknown as AuditService,
   );
 
   beforeEach(() => {
@@ -119,6 +238,9 @@ describe('AuthService.logout', () => {
 
     await expect(service.logout('session-id')).resolves.toBeUndefined();
     expect(sessionsService.revoke).toHaveBeenCalledWith('session-id');
+    expect(auditService.logout).toHaveBeenCalledWith({
+      sessionId: 'session-id',
+    });
   });
 
   it('does not throw when the session is already revoked or missing', async () => {
@@ -126,6 +248,9 @@ describe('AuthService.logout', () => {
 
     await expect(service.logout('session-id')).resolves.toBeUndefined();
     expect(sessionsService.revoke).toHaveBeenCalledWith('session-id');
+    expect(auditService.logout).toHaveBeenCalledWith({
+      sessionId: 'session-id',
+    });
   });
 });
 describe('AuthService.logoutAll', () => {
@@ -140,11 +265,15 @@ describe('AuthService.logoutAll', () => {
   const configService = {
     getOrThrow: jest.fn().mockReturnValue('secret'),
   };
+  const auditService: Partial<AuditService> = {
+    logoutAll: jest.fn(),
+  };
   const service = new AuthService(
     usersService as unknown as UsersService,
     sessionsService as unknown as SessionsService,
     jwtService as unknown as JwtService,
     configService as never,
+    auditService as unknown as AuditService,
   );
 
   beforeEach(() => {
@@ -156,6 +285,7 @@ describe('AuthService.logoutAll', () => {
 
     await expect(service.logoutAll('user-id')).resolves.toBeUndefined();
     expect(sessionsService.revokeAllForUser).toHaveBeenCalledWith('user-id');
+    expect(auditService.logoutAll).toHaveBeenCalledWith({ userId: 'user-id' });
   });
 
   it('does not throw when the user has no active sessions', async () => {
@@ -163,6 +293,7 @@ describe('AuthService.logoutAll', () => {
 
     await expect(service.logoutAll('user-id')).resolves.toBeUndefined();
     expect(sessionsService.revokeAllForUser).toHaveBeenCalledWith('user-id');
+    expect(auditService.logoutAll).toHaveBeenCalledWith({ userId: 'user-id' });
   });
 });
 describe('AuthService.sessions', () => {
@@ -179,11 +310,15 @@ describe('AuthService.sessions', () => {
   const configService = {
     getOrThrow: jest.fn().mockReturnValue('secret'),
   };
+  const auditService: Partial<AuditService> = {
+    logout: jest.fn(),
+  };
   const service = new AuthService(
     usersService as unknown as UsersService,
     sessionsService as unknown as SessionsService,
     jwtService as unknown as JwtService,
     configService as never,
+    auditService as unknown as AuditService,
   );
 
   beforeEach(() => {

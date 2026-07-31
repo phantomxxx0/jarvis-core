@@ -12,6 +12,7 @@ import * as argon2 from 'argon2';
 import ms from 'ms';
 import type { SignOptions } from 'jsonwebtoken';
 
+import { AuditService } from '../audit/audit.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
@@ -42,6 +43,7 @@ export class AuthService {
     private readonly sessionsService: SessionsService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly auditService: AuditService,
   ) {}
 
   async register(dto: RegisterDto, sessionMetadata: SessionMetadata) {
@@ -67,16 +69,33 @@ export class AuthService {
     const user = await this.usersService.findByEmail(dto.email);
 
     if (!user?.passwordHash) {
+      this.auditService.loginFailure({
+        email: dto.email,
+        ipAddress: sessionMetadata.ipAddress ?? null,
+        userAgent: sessionMetadata.userAgent ?? null,
+      });
       throw new UnauthorizedException('Invalid email or password');
     }
 
     if (!(await argon2.verify(user.passwordHash, dto.password))) {
+      this.auditService.loginFailure({
+        email: dto.email,
+        ipAddress: sessionMetadata.ipAddress ?? null,
+        userAgent: sessionMetadata.userAgent ?? null,
+      });
       throw new UnauthorizedException('Invalid email or password');
     }
 
     await this.usersService.updateLastLogin(user.id);
 
     const tokens = await this.issueTokenPair(user, sessionMetadata);
+
+    this.auditService.loginSuccess({
+      userId: user.id,
+      email: user.email,
+      ipAddress: sessionMetadata.ipAddress ?? null,
+      userAgent: sessionMetadata.userAgent ?? null,
+    });
 
     return {
       ...tokens,
@@ -147,10 +166,12 @@ export class AuthService {
 
   async logout(sessionId: string): Promise<void> {
     await this.sessionsService.revoke(sessionId);
+    this.auditService.logout({ sessionId });
   }
 
   async logoutAll(userId: string): Promise<void> {
     await this.sessionsService.revokeAllForUser(userId);
+    this.auditService.logoutAll({ userId });
   }
 
   async listSessions(userId: string): Promise<SessionSummary[]> {
@@ -181,8 +202,7 @@ export class AuthService {
   private async handleRefreshTokenReuse(userId: string): Promise<never> {
     await this.sessionsService.revokeAllForUser(userId);
 
-    // Extension point: emit an audit/security log entry here once
-    // audit logging is implemented (Phase 9C+).
+    this.auditService.refreshTokenReuse({ userId });
 
     throw new UnauthorizedException('Invalid or expired refresh token');
   }
