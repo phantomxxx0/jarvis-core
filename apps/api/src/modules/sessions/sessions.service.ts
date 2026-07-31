@@ -6,13 +6,9 @@ import { SessionsRepository } from './repositories/sessions.repository';
 
 @Injectable()
 export class SessionsService {
-  constructor(
-    private readonly sessionsRepository: SessionsRepository,
-  ) {}
+  constructor(private readonly sessionsRepository: SessionsRepository) {}
 
-  async createSession(
-    values: typeof sessions.$inferInsert,
-  ) {
+  async createSession(values: typeof sessions.$inferInsert) {
     return this.sessionsRepository.create(values);
   }
 
@@ -28,14 +24,12 @@ export class SessionsService {
     return this.sessionsRepository.findByUserId(userId);
   }
 
-  async updateRefreshTokenHash(
-    id: string,
-    refreshTokenHash: string,
-  ) {
-    return this.sessionsRepository.updateRefreshTokenHash(
-      id,
-      refreshTokenHash,
-    );
+  async findActiveByUserId(userId: string) {
+    return this.sessionsRepository.findActiveByUserId(userId);
+  }
+
+  async updateRefreshTokenHash(id: string, refreshTokenHash: string) {
+    return this.sessionsRepository.updateRefreshTokenHash(id, refreshTokenHash);
   }
 
   async updateLastUsedAt(id: string) {

@@ -7,19 +7,14 @@ import { DatabaseService } from '../../../database/database.service';
 
 @Injectable()
 export class SessionsRepository {
-  constructor(
-    private readonly database: DatabaseService,
-  ) {}
+  constructor(private readonly database: DatabaseService) {}
 
   protected get db() {
     return this.database.db;
   }
 
   async create(values: typeof sessions.$inferInsert) {
-    const [session] = await this.db
-      .insert(sessions)
-      .values(values)
-      .returning();
+    const [session] = await this.db.insert(sessions).values(values).returning();
 
     return session;
   }
@@ -49,16 +44,23 @@ export class SessionsRepository {
   }
 
   async findByUserId(userId: string) {
+    return this.db.select().from(sessions).where(eq(sessions.userId, userId));
+  }
+
+  async findActiveByUserId(userId: string) {
     return this.db
       .select()
       .from(sessions)
-      .where(eq(sessions.userId, userId));
+      .where(
+        and(
+          eq(sessions.userId, userId),
+          eq(sessions.isRevoked, false),
+          gt(sessions.expiresAt, new Date()),
+        ),
+      );
   }
 
-  async updateRefreshTokenHash(
-    id: string,
-    refreshTokenHash: string,
-  ) {
+  async updateRefreshTokenHash(id: string, refreshTokenHash: string) {
     const [session] = await this.db
       .update(sessions)
       .set({
@@ -108,8 +110,6 @@ export class SessionsRepository {
   }
 
   async deleteExpired() {
-    return this.db
-      .delete(sessions)
-      .where(lt(sessions.expiresAt, new Date()));
+    return this.db.delete(sessions).where(lt(sessions.expiresAt, new Date()));
   }
 }

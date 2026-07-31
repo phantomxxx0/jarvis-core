@@ -18,47 +18,32 @@ const ROLE_LEVEL: Record<UserRole, number> = {
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(
-    private readonly reflector: Reflector,
-  ) {}
+  constructor(private readonly reflector: Reflector) {}
 
-  canActivate(
-    context: ExecutionContext,
-  ): boolean {
-    const requiredRoles =
-      this.reflector.getAllAndOverride<UserRole[]>(
-        ROLES_KEY,
-        [
-          context.getHandler(),
-          context.getClass(),
-        ],
-      );
+  canActivate(context: ExecutionContext): boolean {
+    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
     if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }
 
-    const request =
-      context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<{ user?: JwtPayload }>();
 
-    const user =
-      request.user as JwtPayload | undefined;
+    const user = request.user;
 
     if (!user) {
       return false;
     }
 
-    const userLevel =
-      ROLE_LEVEL[user.role as UserRole] ?? 0;
+    const userLevel = ROLE_LEVEL[user.role as UserRole] ?? 0;
 
-    const allowed = requiredRoles.some(
-      role => userLevel >= ROLE_LEVEL[role],
-    );
+    const allowed = requiredRoles.some((role) => userLevel >= ROLE_LEVEL[role]);
 
     if (!allowed) {
-      throw new ForbiddenException(
-        'Insufficient permissions.',
-      );
+      throw new ForbiddenException('Insufficient permissions.');
     }
 
     return true;

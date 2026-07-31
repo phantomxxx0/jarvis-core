@@ -40,4 +40,4 @@ async function bootstrap() {
   console.log(`🚀 Jarvis Core API running on http://localhost:${port}`);
 }
 
-bootstrap();
+void bootstrap();

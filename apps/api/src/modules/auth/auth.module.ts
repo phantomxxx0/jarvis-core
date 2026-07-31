@@ -3,7 +3,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import type { StringValue } from 'ms';
+import type { SignOptions } from 'jsonwebtoken';
+
+type JwtExpiresIn = NonNullable<SignOptions['expiresIn']>;
 
 import { SessionsModule } from '../sessions/sessions.module';
 import { UsersModule } from '../users/users.module';
@@ -28,21 +30,17 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.getOrThrow<string>(
-          'JWT_ACCESS_SECRET',
-        ),
+        secret: config.getOrThrow<string>('JWT_ACCESS_SECRET'),
         signOptions: {
           expiresIn: config.getOrThrow<string>(
             'JWT_ACCESS_EXPIRES_IN',
-          ) as StringValue,
+          ) as JwtExpiresIn,
         },
       }),
     }),
   ],
 
-  controllers: [
-    AuthController,
-  ],
+  controllers: [AuthController],
 
   providers: [
     AuthService,
@@ -59,8 +57,6 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     },
   ],
 
-  exports: [
-    AuthService,
-  ],
+  exports: [AuthService],
 })
 export class AuthModule {}

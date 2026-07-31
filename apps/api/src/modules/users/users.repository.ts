@@ -7,9 +7,7 @@ import { DatabaseService } from '../../database';
 
 @Injectable()
 export class UsersRepository {
-  constructor(
-    private readonly database: DatabaseService,
-  ) {}
+  constructor(private readonly database: DatabaseService) {}
 
   async findAll() {
     return this.database.db
