@@ -19,7 +19,7 @@ import type { SessionMetadata } from './interfaces/session-metadata.interface';
 
 type JwtExpiresIn = NonNullable<SignOptions['expiresIn']>;
 type TokenUser = { id: string; email: string; role: string };
-type RefreshTokenPayload = TokenUser & { sub: string; sid: string };
+type RefreshTokenPayload = TokenUser & { sub: string };
 
 const parseDuration = ms as unknown as (value: string) => number;
 
@@ -94,14 +94,20 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    const session = await this.sessionsService.findActiveById(payload.sid);
+    const activeSessions = await this.sessionsService.findActiveByUserId(
+      payload.sub,
+    );
 
-    if (!session || session.userId !== payload.sub) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+    let session: (typeof activeSessions)[number] | undefined;
+
+    for (const candidate of activeSessions) {
+      if (await argon2.verify(candidate.refreshTokenHash, refreshToken)) {
+        session = candidate;
+        break;
+      }
     }
 
-    if (!(await argon2.verify(session.refreshTokenHash, refreshToken))) {
-      await this.sessionsService.revoke(session.id);
+    if (!session) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
@@ -170,7 +176,7 @@ export class AuthService {
   private async generateTokenPair(user: TokenUser, sessionId: string) {
     const [accessToken, refreshToken] = await Promise.all([
       this.generateAccessToken(user, sessionId),
-      this.generateRefreshToken(user, sessionId),
+      this.generateRefreshToken(user),
     ]);
 
     return { accessToken, refreshToken };
@@ -188,9 +194,9 @@ export class AuthService {
     );
   }
 
-  private generateRefreshToken(user: TokenUser, sessionId: string) {
+  private generateRefreshToken(user: TokenUser) {
     return this.jwtService.signAsync(
-      { sub: user.id, sid: sessionId, email: user.email, role: user.role },
+      { sub: user.id, email: user.email, role: user.role },
       {
         secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
         expiresIn: this.configService.getOrThrow<string>(
