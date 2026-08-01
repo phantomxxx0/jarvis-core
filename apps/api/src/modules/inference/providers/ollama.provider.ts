@@ -3,7 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 
-import { ChatMessage } from '../interfaces/chat-message.interface';
+import { ChatMessage } from '../../ai/interfaces/chat-message.interface';
 
 @Injectable()
 export class OllamaProvider {

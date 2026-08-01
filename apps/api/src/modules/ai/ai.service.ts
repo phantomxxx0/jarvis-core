@@ -6,17 +6,17 @@ import { QdrantProvider } from './providers/qdrant.provider';
 import { PromptBuilderService } from './services/prompt-builder.service';
 
 import { ConversationsService } from '../conversations/conversations.service';
-
+import { KnowledgeService } from '../knowledge/knowledge.service';
 
 @Injectable()
 export class AIService {
   constructor(
-  private readonly aiRouter: AIRouter,
-  private readonly qdrantProvider: QdrantProvider,
-  private readonly promptBuilder: PromptBuilderService,
-  private readonly conversationsService: ConversationsService,
- 
-) {}
+    private readonly aiRouter: AIRouter,
+    private readonly qdrantProvider: QdrantProvider,
+    private readonly promptBuilder: PromptBuilderService,
+    private readonly conversationsService: ConversationsService,
+    private readonly knowledgeService: KnowledgeService,
+  ) {}
 
   async chat(
     userId: string,
@@ -63,7 +63,7 @@ export class AIService {
           : '',
     }));
 
-    // Build final prompt using conversation history + semantic memories
+    // Build final prompt
     const prompt = this.promptBuilder.build(
       history,
       memoryContext,
@@ -71,16 +71,25 @@ export class AIService {
 
     // Generate assistant response
     const answer = await this.aiRouter.chat(prompt);
-    // Extract durable memories from the conversation
-
 
     // Save assistant response
+    const assistantMessage: ChatMessage = {
+      role: 'assistant',
+      content: answer,
+    };
+
     await this.conversationsService.saveMessage(
       userId,
-      {
-        role: 'assistant',
-        content: answer,
-      },
+      assistantMessage,
+    );
+
+    // Learn from the completed conversation
+    await this.knowledgeService.learnFromConversation(
+      userId,
+      [
+        ...history,
+        assistantMessage,
+      ],
     );
 
     return answer;

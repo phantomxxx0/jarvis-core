@@ -3,24 +3,26 @@ import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { ConversationsModule } from '../conversations/conversations.module';
+import { KnowledgeModule } from '../knowledge/knowledge.module';
 
 import { AIController } from './ai.controller';
 import { AIService } from './ai.service';
 import { AIRouter } from './router/ai.router';
 
-import { OllamaProvider } from './providers/ollama.provider';
+import { OllamaProvider } from '../inference/providers/ollama.provider';
 import { QdrantProvider } from './providers/qdrant.provider';
 
 import { PromptBuilderService } from './services/prompt-builder.service';
 import { MemoryExtractorService } from './services/memory-extractor.service';
 
-import { LocalWorker } from './workers/local.worker';
-import { FriendWorker } from './workers/friend.worker';
+import { LocalWorker } from '../inference/workers/local.worker';
+import { FriendWorker } from '../inference/workers/friend.worker';
 
 @Module({
   imports: [
     ConfigModule,
     ConversationsModule,
+    KnowledgeModule,
 
     HttpModule.registerAsync({
       imports: [ConfigModule],
@@ -32,9 +34,7 @@ import { FriendWorker } from './workers/friend.worker';
     }),
   ],
 
-  controllers: [
-    AIController,
-  ],
+  controllers: [AIController],
 
   providers: [
     AIService,
@@ -53,9 +53,7 @@ import { FriendWorker } from './workers/friend.worker';
   exports: [
     AIRouter,
     QdrantProvider,
-    MemoryExtractorService,
     AIService,
   ],
 })
-
 export class AIModule {}

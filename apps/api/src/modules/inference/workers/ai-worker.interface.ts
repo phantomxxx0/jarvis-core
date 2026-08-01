@@ -1,4 +1,4 @@
-import { ChatMessage } from '../interfaces/chat-message.interface';
+import { ChatMessage } from '../../ai/interfaces/chat-message.interface';
 
 export interface AIWorker {
   readonly id: string;

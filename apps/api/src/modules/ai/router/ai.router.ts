@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 
 import { ChatMessage } from '../interfaces/chat-message.interface';
-import { LocalWorker } from '../workers/local.worker';
-import { FriendWorker } from '../workers/friend.worker';
+
+import { LocalWorker } from '../../inference/workers/local.worker';
+import { FriendWorker } from '../../inference/workers/friend.worker';
 
 @Injectable()
 export class AIRouter {
@@ -12,14 +13,15 @@ export class AIRouter {
   ) {}
 
   /**
-   * Phase 11B:
-   * Always use the local worker.
+   * Current routing strategy:
+   * - Always use the local worker.
    *
    * Future:
-   * - health checks
-   * - load balancing
-   * - failover
-   * - model routing
+   * - Health checks
+   * - Load balancing
+   * - Failover
+   * - Model selection
+   * - Cost-aware routing
    */
   private getWorker() {
     return this.localWorker;
