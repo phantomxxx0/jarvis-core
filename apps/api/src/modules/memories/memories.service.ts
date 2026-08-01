@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { AIService } from '../ai/ai.service';
+import { AIRouter } from '../ai/router/ai.router';
 import { QdrantProvider } from '../ai/providers/qdrant.provider';
 
 import {
@@ -18,10 +18,10 @@ export class MemoriesService {
   private readonly logger = new Logger(MemoriesService.name);
 
   constructor(
-    private readonly memoriesRepository: MemoriesRepository,
-    private readonly aiService: AIService,
-    private readonly qdrantProvider: QdrantProvider,
-  ) {}
+  private readonly memoriesRepository: MemoriesRepository,
+  private readonly aiRouter: AIRouter,
+  private readonly qdrantProvider: QdrantProvider,
+) {}
 
   async create(data: CreateMemoryData) {
     // 1. Save to PostgreSQL first
@@ -29,7 +29,7 @@ export class MemoriesService {
 
     // 2. Best-effort semantic indexing
     try {
-      const embedding = await this.aiService.embed(memory.content);
+      const embedding = await this.aiRouter.embed(memory.content);
 
       this.logger.log(
         `Embedding generated. Dimension: ${embedding.length}`,
@@ -113,7 +113,7 @@ export class MemoriesService {
   limit = 5,
 ) {
   // Generate embedding for the query
-  const embedding = await this.aiService.embed(query);
+  const embedding = await this.aiRouter.embed(query);
 
   this.logger.log(
     `Searching semantic memories for user ${userId}`,

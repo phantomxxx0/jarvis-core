@@ -5,15 +5,21 @@ import { AIRouter } from './router/ai.router';
 import { QdrantProvider } from './providers/qdrant.provider';
 import { PromptBuilderService } from './services/prompt-builder.service';
 
+import { ConversationsService } from '../conversations/conversations.service';
+
+
 @Injectable()
 export class AIService {
   constructor(
-    private readonly aiRouter: AIRouter,
-    private readonly qdrantProvider: QdrantProvider,
-    private readonly promptBuilder: PromptBuilderService,
-  ) {}
+  private readonly aiRouter: AIRouter,
+  private readonly qdrantProvider: QdrantProvider,
+  private readonly promptBuilder: PromptBuilderService,
+  private readonly conversationsService: ConversationsService,
+ 
+) {}
 
   async chat(
+    userId: string,
     messages: ChatMessage[],
   ): Promise<string> {
     const latestMessage = messages.at(-1);
@@ -21,6 +27,19 @@ export class AIService {
     if (!latestMessage) {
       throw new Error('No chat messages provided.');
     }
+
+    // Save the user's latest message
+    await this.conversationsService.saveMessage(
+      userId,
+      latestMessage,
+    );
+
+    // Load recent conversation history
+    const history =
+      await this.conversationsService.getRecentMessages(
+        userId,
+        10,
+      );
 
     // Generate embedding for the latest user message
     const embedding = await this.aiRouter.embed(
@@ -34,7 +53,7 @@ export class AIService {
         5,
       );
 
-    // Build the memory context
+    // Build semantic memory context
     const memoryContext = memories.map((memory) => ({
       id: String(memory.id),
       score: memory.score ?? 0,
@@ -44,14 +63,27 @@ export class AIService {
           : '',
     }));
 
-    // Build the final prompt
+    // Build final prompt using conversation history + semantic memories
     const prompt = this.promptBuilder.build(
-      messages,
+      history,
       memoryContext,
     );
 
-    // Generate the response
-    return this.aiRouter.chat(prompt);
+    // Generate assistant response
+    const answer = await this.aiRouter.chat(prompt);
+    // Extract durable memories from the conversation
+
+
+    // Save assistant response
+    await this.conversationsService.saveMessage(
+      userId,
+      {
+        role: 'assistant',
+        content: answer,
+      },
+    );
+
+    return answer;
   }
 
   embed(text: string) {

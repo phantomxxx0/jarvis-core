@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
+import { ConversationsModule } from '../conversations/conversations.module';
+
 import { AIController } from './ai.controller';
 import { AIService } from './ai.service';
 import { AIRouter } from './router/ai.router';
@@ -10,6 +12,7 @@ import { OllamaProvider } from './providers/ollama.provider';
 import { QdrantProvider } from './providers/qdrant.provider';
 
 import { PromptBuilderService } from './services/prompt-builder.service';
+import { MemoryExtractorService } from './services/memory-extractor.service';
 
 import { LocalWorker } from './workers/local.worker';
 import { FriendWorker } from './workers/friend.worker';
@@ -17,6 +20,8 @@ import { FriendWorker } from './workers/friend.worker';
 @Module({
   imports: [
     ConfigModule,
+    ConversationsModule,
+
     HttpModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -35,19 +40,22 @@ import { FriendWorker } from './workers/friend.worker';
     AIService,
 
     AIRouter,
-
     OllamaProvider,
     QdrantProvider,
 
     PromptBuilderService,
+    MemoryExtractorService,
 
     LocalWorker,
     FriendWorker,
   ],
 
   exports: [
-    AIService,
+    AIRouter,
     QdrantProvider,
+    MemoryExtractorService,
+    AIService,
   ],
 })
+
 export class AIModule {}
