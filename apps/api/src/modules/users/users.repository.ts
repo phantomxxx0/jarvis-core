@@ -45,6 +45,15 @@ export class UsersRepository {
     return user;
   }
 
+  async findByIdWithPasswordHash(id: string) {
+    const [user] = await this.database.db
+      .select()
+      .from(users)
+      .where(eq(users.id, id));
+
+    return user;
+  }
+
   async findByEmail(email: string) {
     const [user] = await this.database.db
       .select()
@@ -97,6 +106,19 @@ export class UsersRepository {
     const [user] = await this.database.db
       .update(users)
       .set(data)
+      .where(eq(users.id, id))
+      .returning();
+
+    return user;
+  }
+
+  async updatePassword(id: string, passwordHash: string) {
+    const [user] = await this.database.db
+      .update(users)
+      .set({
+        passwordHash,
+        updatedAt: new Date(),
+      })
       .where(eq(users.id, id))
       .returning();
 

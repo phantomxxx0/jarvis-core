@@ -43,7 +43,12 @@ export class SessionsService {
   async revokeAllForUser(userId: string) {
     return this.sessionsRepository.revokeAllForUser(userId);
   }
-
+  async revokeAllForUserExcept(userId: string, exceptSessionId: string) {
+    return this.sessionsRepository.revokeAllForUserExcept(
+      userId,
+      exceptSessionId,
+    );
+  }
   async deleteExpired() {
     return this.sessionsRepository.deleteExpired();
   }

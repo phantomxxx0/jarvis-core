@@ -454,3 +454,107 @@ describe('AuthService.sessions', () => {
     });
   });
 });
+describe('AuthService.changePassword', () => {
+  const user = {
+    id: 'user-id',
+    email: 'user@example.com',
+    passwordHash: 'stored-hash',
+  };
+  const usersService = {
+    findByIdWithPasswordHash: jest.fn(),
+    changePassword: jest.fn(),
+  };
+  const sessionsService = {
+    revokeAllForUserExcept: jest.fn(),
+  };
+  const jwtService = {
+    verifyAsync: jest.fn(),
+    signAsync: jest.fn(),
+  };
+  const configService = {
+    getOrThrow: jest.fn().mockReturnValue('secret'),
+  };
+  const auditService: Partial<AuditService> = {
+    passwordChanged: jest.fn(),
+  };
+  const service = new AuthService(
+    usersService as unknown as UsersService,
+    sessionsService as unknown as SessionsService,
+    jwtService as unknown as JwtService,
+    configService as never,
+    auditService as unknown as AuditService,
+  );
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    (argon2.verify as unknown as jest.Mock).mockResolvedValue(true);
+    (argon2.hash as unknown as jest.Mock).mockResolvedValue('new-hash');
+    usersService.findByIdWithPasswordHash.mockResolvedValue(user);
+    usersService.changePassword.mockResolvedValue(undefined);
+    sessionsService.revokeAllForUserExcept.mockResolvedValue(undefined);
+  });
+
+  it('changes the password, revokes other sessions, and emits PasswordChanged', async () => {
+    await expect(
+      service.changePassword('user-id', 'session-id', {
+        currentPassword: 'correct-current',
+        newPassword: 'new-password-123',
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(argon2.verify).toHaveBeenCalledWith(
+      'stored-hash',
+      'correct-current',
+    );
+    expect(argon2.hash).toHaveBeenCalledWith('new-password-123');
+    expect(usersService.changePassword).toHaveBeenCalledWith(
+      'user-id',
+      'new-hash',
+    );
+    expect(sessionsService.revokeAllForUserExcept).toHaveBeenCalledWith(
+      'user-id',
+      'session-id',
+    );
+    expect(auditService.passwordChanged).toHaveBeenCalledWith({
+      userId: 'user-id',
+      email: 'user@example.com',
+    });
+  });
+
+  it('rejects an incorrect current password without mutating state', async () => {
+    (argon2.verify as unknown as jest.Mock).mockResolvedValue(false);
+
+    await expect(
+      service.changePassword('user-id', 'session-id', {
+        currentPassword: 'wrong-current',
+        newPassword: 'new-password-123',
+      }),
+    ).rejects.toThrow(UnauthorizedException);
+
+    expect(argon2.hash).not.toHaveBeenCalled();
+    expect(usersService.changePassword).not.toHaveBeenCalled();
+    expect(sessionsService.revokeAllForUserExcept).not.toHaveBeenCalled();
+    expect(auditService.passwordChanged).not.toHaveBeenCalled();
+  });
+
+  it('rejects when the user has no stored password hash', async () => {
+    usersService.findByIdWithPasswordHash.mockResolvedValue({
+      id: 'user-id',
+      email: 'user@example.com',
+      passwordHash: null,
+    });
+
+    await expect(
+      service.changePassword('user-id', 'session-id', {
+        currentPassword: 'anything',
+        newPassword: 'new-password-123',
+      }),
+    ).rejects.toThrow(UnauthorizedException);
+
+    expect(argon2.verify).not.toHaveBeenCalled();
+    expect(argon2.hash).not.toHaveBeenCalled();
+    expect(usersService.changePassword).not.toHaveBeenCalled();
+    expect(sessionsService.revokeAllForUserExcept).not.toHaveBeenCalled();
+    expect(auditService.passwordChanged).not.toHaveBeenCalled();
+  });
+});

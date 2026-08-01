@@ -15,6 +15,7 @@ import { AuthService } from './auth.service';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { Public } from './decorators/public.decorator';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
 import type { SessionMetadata } from './interfaces/session-metadata.interface';
@@ -56,6 +57,16 @@ export class AuthController {
   async logoutAll(@CurrentUser() user: JwtPayload): Promise<void> {
     await this.authService.logoutAll(user.id);
   }
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @SkipThrottle()
+  @Post('change-password')
+  async changePassword(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: ChangePasswordDto,
+  ): Promise<void> {
+    await this.authService.changePassword(user.id, user.sessionId, dto);
+  }
+
   @SkipThrottle()
   @Get('sessions')
   listSessions(@CurrentUser() user: JwtPayload) {

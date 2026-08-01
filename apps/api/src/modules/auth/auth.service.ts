@@ -16,6 +16,7 @@ import { AuditService } from '../audit/audit.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { RegisterDto } from './dto/register.dto';
 import type { SessionMetadata } from './interfaces/session-metadata.interface';
 
@@ -216,6 +217,29 @@ export class AuthService {
     }
 
     await this.sessionsService.revoke(sessionId);
+  }
+  async changePassword(
+    userId: string,
+    currentSessionId: string,
+    dto: ChangePasswordDto,
+  ): Promise<void> {
+    const user = await this.usersService.findByIdWithPasswordHash(userId);
+
+    if (
+      !user?.passwordHash ||
+      !(await argon2.verify(user.passwordHash, dto.currentPassword))
+    ) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const passwordHash = await argon2.hash(dto.newPassword);
+    await this.usersService.changePassword(userId, passwordHash);
+    await this.sessionsService.revokeAllForUserExcept(userId, currentSessionId);
+
+    this.auditService.passwordChanged({
+      userId: user.id,
+      email: user.email,
+    });
   }
 
   private async handleRefreshTokenReuse(userId: string): Promise<never> {
