@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { AIWorker } from './ai-worker.interface';
+import { ChatMessage } from '../interfaces/chat-message.interface';
 import { OllamaProvider } from '../providers/ollama.provider';
 
 @Injectable()
@@ -17,7 +18,7 @@ export class LocalWorker implements AIWorker {
     return true;
   }
 
-  chat(messages: unknown[]) {
+  chat(messages: ChatMessage[]) {
     return this.ollama.chat(messages);
   }
 

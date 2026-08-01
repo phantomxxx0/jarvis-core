@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -35,6 +36,16 @@ export class MemoriesController {
   findAll(@CurrentUser() user: JwtPayload) {
     return this.memoriesService.findByUserId(user.id);
   }
+@Get('search')
+search(
+  @CurrentUser() user: JwtPayload,
+  @Query('q') query: string,
+) {
+  return this.memoriesService.searchSimilar(
+    user.id,
+    query,
+  );
+}
 
   @Get(':id')
   findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {

@@ -2,11 +2,14 @@ import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
+import { AIController } from './ai.controller';
 import { AIService } from './ai.service';
 import { AIRouter } from './router/ai.router';
 
 import { OllamaProvider } from './providers/ollama.provider';
 import { QdrantProvider } from './providers/qdrant.provider';
+
+import { PromptBuilderService } from './services/prompt-builder.service';
 
 import { LocalWorker } from './workers/local.worker';
 import { FriendWorker } from './workers/friend.worker';
@@ -23,6 +26,11 @@ import { FriendWorker } from './workers/friend.worker';
       }),
     }),
   ],
+
+  controllers: [
+    AIController,
+  ],
+
   providers: [
     AIService,
 
@@ -31,9 +39,15 @@ import { FriendWorker } from './workers/friend.worker';
     OllamaProvider,
     QdrantProvider,
 
+    PromptBuilderService,
+
     LocalWorker,
     FriendWorker,
   ],
-  exports: [AIService],
+
+  exports: [
+    AIService,
+    QdrantProvider,
+  ],
 })
 export class AIModule {}

@@ -58,9 +58,14 @@ export class QdrantProvider implements OnModuleInit {
   }
 
   async ensureCollection(): Promise<void> {
-    const exists = await this.client.collectionExists(
+    const result = await this.client.collectionExists(
       this.collection,
     );
+
+    const exists =
+      typeof result === 'boolean'
+        ? result
+        : result.exists;
 
     if (exists) {
       this.logger.log(
@@ -103,28 +108,48 @@ export class QdrantProvider implements OnModuleInit {
   }
 
   async searchMemory(
-    vector: number[],
-    limit = 5,
-  ) {
-    return this.client.search(this.collection, {
-      vector,
-      limit,
-      with_payload: true,
-    });
-  }
+  vector: number[],
+  limit = 5,
+  filter?: {
+    userId?: string;
+    type?: string;
+  },
+) {
+  return this.client.search(this.collection, {
+    vector,
+    limit,
+    with_payload: true,
+    with_vector: false,
 
-  async deleteMemory(id: string) {
-    return this.client.delete(this.collection, {
-      wait: true,
-      points: [id],
-    });
-  }
+    filter:
+      filter?.userId || filter?.type
+        ? {
+            must: [
+              ...(filter.userId
+                ? [
+                    {
+                      key: 'userId',
+                      match: {
+                        value: filter.userId,
+                      },
+                    },
+                  ]
+                : []),
 
-  async count() {
-    return this.client.count(this.collection);
-  }
-
-  getClient(): QdrantClient {
-    return this.client;
-  }
+              ...(filter.type
+                ? [
+                    {
+                      key: 'type',
+                      match: {
+                        value: filter.type,
+                      },
+                    },
+                  ]
+                : []),
+            ],
+          }
+        : undefined,
+  });
 }
+}
+

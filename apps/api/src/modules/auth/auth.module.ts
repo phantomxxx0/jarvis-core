@@ -7,6 +7,7 @@ import type { SignOptions } from 'jsonwebtoken';
 
 type JwtExpiresIn = NonNullable<SignOptions['expiresIn']>;
 
+import { AuditModule } from '../audit/audit.module';
 import { SessionsModule } from '../sessions/sessions.module';
 import { UsersModule } from '../users/users.module';
 
@@ -19,7 +20,10 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 @Module({
   imports: [
     UsersModule,
+
     SessionsModule,
+
+    AuditModule,
 
     ConfigModule,
 
@@ -40,10 +44,13 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     }),
   ],
 
-  controllers: [AuthController],
+  controllers: [
+    AuthController,
+  ],
 
   providers: [
     AuthService,
+
     JwtStrategy,
 
     {
@@ -57,6 +64,8 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     },
   ],
 
-  exports: [AuthService],
+  exports: [
+    AuthService,
+  ],
 })
 export class AuthModule {}

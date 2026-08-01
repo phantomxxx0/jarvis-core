@@ -3,6 +3,8 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 
+import { ChatMessage } from '../interfaces/chat-message.interface';
+
 @Injectable()
 export class OllamaProvider {
   constructor(
@@ -11,7 +13,9 @@ export class OllamaProvider {
   ) {}
 
   async embed(text: string): Promise<number[]> {
-    const model = this.config.getOrThrow<string>('OLLAMA_EMBED_MODEL');
+    const model = this.config.getOrThrow<string>(
+      'OLLAMA_EMBED_MODEL',
+    );
 
     const response = await firstValueFrom(
       this.http.post('/api/embed', {
@@ -23,11 +27,39 @@ export class OllamaProvider {
     return response.data.embeddings[0];
   }
 
-  async chat(_messages: unknown): Promise<never> {
-    throw new Error('chat() not implemented yet');
+  async chat(
+    messages: ChatMessage[],
+  ): Promise<string> {
+    const model = this.config.getOrThrow<string>(
+      'OLLAMA_CHAT_MODEL',
+    );
+
+    const response = await firstValueFrom(
+      this.http.post('/api/chat', {
+        model,
+        stream: false,
+        messages,
+      }),
+    );
+
+    return response.data.message.content;
   }
 
-  async reason(_prompt: string): Promise<never> {
-    throw new Error('reason() not implemented yet');
+  async reason(
+    prompt: string,
+  ): Promise<string> {
+    const model = this.config.getOrThrow<string>(
+      'OLLAMA_REASON_MODEL',
+    );
+
+    const response = await firstValueFrom(
+      this.http.post('/api/generate', {
+        model,
+        prompt,
+        stream: false,
+      }),
+    );
+
+    return response.data.response;
   }
 }

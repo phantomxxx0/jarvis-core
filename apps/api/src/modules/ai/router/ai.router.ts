@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
+import { ChatMessage } from '../interfaces/chat-message.interface';
 import { LocalWorker } from '../workers/local.worker';
 import { FriendWorker } from '../workers/friend.worker';
 
@@ -28,7 +29,7 @@ export class AIRouter {
     return this.getWorker().embed(text);
   }
 
-  chat(messages: unknown[]) {
+  chat(messages: ChatMessage[]) {
     return this.getWorker().chat(messages);
   }
 
