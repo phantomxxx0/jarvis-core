@@ -8,11 +8,11 @@ import { DatabaseModule } from './database';
 import { validate } from './config/env.validation';
 import { loggerConfig } from './config/logger.config';
 
-import { HealthModule } from './modules/health/health.module';
-import { UsersModule } from './modules/users/users.module';
+import { AIModule } from './modules/ai/ai.module';
 import { AuthModule } from './modules/auth/auth.module';
-
+import { HealthModule } from './modules/health/health.module';
 import { MemoriesModule } from './modules/memories/memories.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -45,14 +45,10 @@ import { MemoriesModule } from './modules/memories/memories.module';
     AuthModule,
 
     MemoriesModule,
+
+    AIModule,
   ],
   providers: [
-    // NOTE: Execution order relative to AuthModule's GlobalJwtAuthGuard/
-    // RolesGuard (registered separately in AuthModule) is NOT guaranteed
-    // by NestJS across module boundaries. This is currently safe because
-    // every throttled route (register/login/refresh) is also @Public(),
-    // so GlobalJwtAuthGuard is a no-op on them regardless of order. If a
-    // protected route is throttled in the future, revisit this.
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
