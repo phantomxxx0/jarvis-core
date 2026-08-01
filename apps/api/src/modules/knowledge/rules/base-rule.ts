@@ -49,11 +49,14 @@ export abstract class BaseRule implements KnowledgeRule {
         continue;
       }
 
-      const object = match[1].trim();
+      const object = match[1]
+.trim()
+.replace(/[.!?,;:]+$/, '');
 
-      if (!object) {
-        continue;
+if (!object) {
+  continue;
       }
+
 
       return KnowledgeFactBuilder.create({
         subject: this.subject,
