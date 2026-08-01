@@ -14,6 +14,8 @@ import { HealthModule } from './modules/health/health.module';
 import { MemoriesModule } from './modules/memories/memories.module';
 import { UsersModule } from './modules/users/users.module';
 
+import { BrainModule } from './modules/brain/brain.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -47,6 +49,8 @@ import { UsersModule } from './modules/users/users.module';
     MemoriesModule,
 
     AIModule,
+
+    BrainModule,
   ],
   providers: [
     {
