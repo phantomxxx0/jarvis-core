@@ -12,6 +12,8 @@ import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 
+import { MemoriesModule } from './modules/memories/memories.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -41,6 +43,8 @@ import { AuthModule } from './modules/auth/auth.module';
     UsersModule,
 
     AuthModule,
+
+    MemoriesModule,
   ],
   providers: [
     // NOTE: Execution order relative to AuthModule's GlobalJwtAuthGuard/
