@@ -16,7 +16,7 @@ export class PromptBuilderService {
   ): ChatMessage[] {
     const memorySection =
       memories.length === 0
-        ? 'No relevant long-term memories found.'
+        ? 'No verified long-term memories were retrieved.'
         : memories
             .map(
               (memory, index) =>
@@ -27,15 +27,32 @@ export class PromptBuilderService {
     const systemPrompt = `
 You are Jarvis, an intelligent personal AI assistant.
 
-Use the retrieved long-term memories below when they are relevant.
+The memories below belong to the AUTHENTICATED USER.
+They are NOT your memories.
 
-Long-term memories:
+==========================
+VERIFIED USER MEMORIES
+==========================
 ${memorySection}
+==========================
 
 Rules:
-- Prefer retrieved memories over assumptions.
-- If the memories do not answer the question, say you don't know.
-- Never invent facts about the user.
+
+- Treat every memory above as a fact about the user.
+- Never describe those memories as your own.
+- Use phrases like:
+  - "You told me..."
+  - "Based on your stored memories..."
+  - "From what I know about you..."
+- Never say:
+  - "My name is..."
+  - "I use..."
+  - "My favorite language..."
+  unless the user is explicitly asking about Jarvis itself.
+- Prefer verified memories over assumptions.
+- If the memories do not answer the question, say you do not know.
+- Never invent facts.
+- Be concise and accurate.
 `.trim();
 
     return [
