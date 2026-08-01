@@ -66,26 +66,45 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, sessionMetadata: SessionMetadata) {
+    const now = new Date();
+    const loginFailureAudit = {
+      email: dto.email,
+      ipAddress: sessionMetadata.ipAddress ?? null,
+      userAgent: sessionMetadata.userAgent ?? null,
+    };
+
     const user = await this.usersService.findByEmail(dto.email);
 
     if (!user?.passwordHash) {
-      this.auditService.loginFailure({
-        email: dto.email,
-        ipAddress: sessionMetadata.ipAddress ?? null,
-        userAgent: sessionMetadata.userAgent ?? null,
-      });
+      this.auditService.loginFailure(loginFailureAudit);
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    if (user.lockoutUntil && user.lockoutUntil > now) {
+      this.auditService.loginFailure(loginFailureAudit);
       throw new UnauthorizedException('Invalid email or password');
     }
 
     if (!(await argon2.verify(user.passwordHash, dto.password))) {
-      this.auditService.loginFailure({
-        email: dto.email,
-        ipAddress: sessionMetadata.ipAddress ?? null,
-        userAgent: sessionMetadata.userAgent ?? null,
+      const failureResult = await this.usersService.recordFailedLogin({
+        id: user.id,
+        failedLoginAttempts: user.failedLoginAttempts,
+        lockoutUntil: user.lockoutUntil,
       });
+
+      if (failureResult.wasJustLocked) {
+        this.auditService.accountLocked({
+          userId: user.id,
+          email: user.email,
+          lockoutUntil: failureResult.lockoutUntil,
+        });
+      }
+
+      this.auditService.loginFailure(loginFailureAudit);
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    await this.usersService.recordSuccessfulLogin(user.id);
     await this.usersService.updateLastLogin(user.id);
 
     const tokens = await this.issueTokenPair(user, sessionMetadata);

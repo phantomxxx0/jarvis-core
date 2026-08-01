@@ -3,7 +3,6 @@ import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { AuditService } from '../audit/audit.service';
 import { SessionsService } from '../sessions/sessions.service';
-import { UsersService } from '../users/users.service';
 import { AuthService } from './auth.service';
 jest.mock('argon2', () => ({
   hash: jest.fn(),
@@ -17,6 +16,8 @@ describe('AuthService.login', () => {
     role: 'USER',
     name: 'Test User',
     isActive: true,
+    failedLoginAttempts: 0,
+    lockoutUntil: null as Date | null,
     createdAt: new Date('2026-01-01T00:00:00Z'),
     updatedAt: new Date('2026-01-01T00:00:00Z'),
   };
@@ -28,6 +29,8 @@ describe('AuthService.login', () => {
   const usersService = {
     findByEmail: jest.fn(),
     updateLastLogin: jest.fn(),
+    recordFailedLogin: jest.fn(),
+    recordSuccessfulLogin: jest.fn(),
   };
   const sessionsService = {
     createSession: jest.fn(),
@@ -41,9 +44,10 @@ describe('AuthService.login', () => {
   const auditService: Partial<AuditService> = {
     loginSuccess: jest.fn(),
     loginFailure: jest.fn(),
+    accountLocked: jest.fn(),
   };
   const service = new AuthService(
-    usersService as unknown as UsersService,
+    usersService,
     sessionsService as unknown as SessionsService,
     jwtService as unknown as JwtService,
     configService as never,
@@ -58,6 +62,12 @@ describe('AuthService.login', () => {
     jwtService.signAsync.mockResolvedValue('token');
     usersService.findByEmail.mockResolvedValue(user);
     usersService.updateLastLogin.mockResolvedValue(undefined);
+    usersService.recordSuccessfulLogin.mockResolvedValue(undefined);
+    usersService.recordFailedLogin.mockResolvedValue({
+      wasJustLocked: false,
+      currentAttempts: 1,
+      lockoutUntil: null,
+    });
     sessionsService.createSession.mockResolvedValue({ id: 'session-id' });
   });
 
@@ -74,6 +84,8 @@ describe('AuthService.login', () => {
       userAgent: sessionMetadata.userAgent,
     });
     expect(auditService.loginFailure).not.toHaveBeenCalled();
+    expect(usersService.recordSuccessfulLogin).toHaveBeenCalledWith(user.id);
+    expect(usersService.updateLastLogin).toHaveBeenCalledWith(user.id);
   });
 
   it('logs LoginFailure for an invalid password', async () => {
@@ -111,6 +123,51 @@ describe('AuthService.login', () => {
     });
     expect(auditService.loginSuccess).not.toHaveBeenCalled();
   });
+  it('rejects with the generic message when the account is actively locked', async () => {
+    usersService.findByEmail.mockResolvedValue({
+      ...user,
+      lockoutUntil: new Date(Date.now() + 15 * 60_000),
+    });
+
+    await expect(
+      service.login(
+        { email: user.email, password: 'correct-password' },
+        sessionMetadata,
+      ),
+    ).rejects.toThrow(UnauthorizedException);
+
+    expect(argon2.verify).not.toHaveBeenCalled();
+    expect(usersService.recordFailedLogin).not.toHaveBeenCalled();
+    expect(usersService.recordSuccessfulLogin).not.toHaveBeenCalled();
+    expect(auditService.loginFailure).toHaveBeenCalledTimes(1);
+    expect(auditService.accountLocked).not.toHaveBeenCalled();
+  });
+
+  it('emits AccountLocked exactly once when a failed login crosses the lockout threshold', async () => {
+    (argon2.verify as unknown as jest.Mock).mockResolvedValue(false);
+    const lockoutUntil = new Date(Date.now() + 15 * 60_000);
+    usersService.recordFailedLogin.mockResolvedValue({
+      wasJustLocked: true,
+      currentAttempts: 5,
+      lockoutUntil,
+    });
+
+    await expect(
+      service.login(
+        { email: user.email, password: 'wrong-password' },
+        sessionMetadata,
+      ),
+    ).rejects.toThrow(UnauthorizedException);
+
+    expect(usersService.recordFailedLogin).toHaveBeenCalledTimes(1);
+    expect(auditService.accountLocked).toHaveBeenCalledTimes(1);
+    expect(auditService.accountLocked).toHaveBeenCalledWith({
+      userId: user.id,
+      email: user.email,
+      lockoutUntil,
+    });
+    expect(auditService.loginFailure).toHaveBeenCalledTimes(1);
+  });
 });
 describe('AuthService.refresh', () => {
   const user = {
@@ -138,7 +195,7 @@ describe('AuthService.refresh', () => {
     refreshTokenReuse: jest.fn(),
   };
   const service = new AuthService(
-    usersService as unknown as UsersService,
+    usersService,
     sessionsService as unknown as SessionsService,
     jwtService as unknown as JwtService,
     configService as never,
@@ -222,7 +279,7 @@ describe('AuthService.logout', () => {
     logout: jest.fn(),
   };
   const service = new AuthService(
-    usersService as unknown as UsersService,
+    usersService,
     sessionsService as unknown as SessionsService,
     jwtService as unknown as JwtService,
     configService as never,
@@ -269,7 +326,7 @@ describe('AuthService.logoutAll', () => {
     logoutAll: jest.fn(),
   };
   const service = new AuthService(
-    usersService as unknown as UsersService,
+    usersService,
     sessionsService as unknown as SessionsService,
     jwtService as unknown as JwtService,
     configService as never,
@@ -314,7 +371,7 @@ describe('AuthService.sessions', () => {
     logout: jest.fn(),
   };
   const service = new AuthService(
-    usersService as unknown as UsersService,
+    usersService,
     sessionsService as unknown as SessionsService,
     jwtService as unknown as JwtService,
     configService as never,

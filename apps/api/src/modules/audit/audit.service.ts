@@ -15,6 +15,12 @@ interface LoginFailureData {
   userAgent: string | null;
 }
 
+interface AccountLockedData {
+  userId: string;
+  email: string;
+  lockoutUntil: Date | null;
+}
+
 interface LogoutData {
   sessionId: string;
 }
@@ -40,6 +46,10 @@ export class AuditService {
 
   loginFailure(data: LoginFailureData): void {
     this.log(AuditEvent.LoginFailure, data);
+  }
+
+  accountLocked(data: AccountLockedData): void {
+    this.log(AuditEvent.AccountLocked, data);
   }
 
   refreshTokenReuse(data: RefreshTokenReuseData): void {

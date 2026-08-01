@@ -25,6 +25,11 @@ export const envSchema = z.object({
   // ==========================
   THROTTLE_TTL: z.coerce.number().default(60000),
   THROTTLE_LIMIT: z.coerce.number().default(5),
+  // ==========================
+  // Security / Auth Lockout
+  // ==========================
+  AUTH_MAX_FAILED_ATTEMPTS: z.coerce.number().default(5),
+  AUTH_LOCKOUT_DURATION_MINS: z.coerce.number().default(15),
 });
 export type Env = z.infer<typeof envSchema>;
 export function validate(config: Record<string, unknown>) {
