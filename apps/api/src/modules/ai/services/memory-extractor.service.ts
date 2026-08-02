@@ -5,13 +5,9 @@ import { ChatMessage } from '../../ai/interfaces/chat-message.interface';
 
 @Injectable()
 export class MemoryExtractorService {
-  constructor(
-    private readonly aiRouter: AIRouter,
-  ) {}
+  constructor(private readonly aiRouter: AIRouter) {}
 
-  async extract(
-    messages: ChatMessage[],
-  ): Promise<string[]> {
+  async extract(messages: ChatMessage[]): Promise<string[]> {
     const latest = messages.at(-1);
 
     if (!latest || latest.role !== 'user') {
@@ -60,11 +56,17 @@ Conversation:
 ${latest.content}
 `;
 
-    const response =
-      await this.aiRouter.reason(prompt);
+    const response = await this.aiRouter.reason(prompt);
 
     try {
-      return JSON.parse(response);
+      const parsed = JSON.parse(response) as unknown;
+      if (
+        Array.isArray(parsed) &&
+        parsed.every((item) => typeof item === 'string')
+      ) {
+        return parsed;
+      }
+      return [];
     } catch {
       return [];
     }
