@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 
 import { ConversationsModule } from '../conversations/conversations.module';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
+import { WorkersModule } from '../workers/workers.module';
 
 import { AIController } from './ai.controller';
 import { AIService } from './ai.service';
@@ -23,6 +24,7 @@ import { FriendWorker } from '../inference/workers/friend.worker';
     ConfigModule,
     ConversationsModule,
     KnowledgeModule,
+    WorkersModule,
 
     HttpModule.registerAsync({
       imports: [ConfigModule],
@@ -50,10 +52,6 @@ import { FriendWorker } from '../inference/workers/friend.worker';
     FriendWorker,
   ],
 
-  exports: [
-    AIRouter,
-    QdrantProvider,
-    AIService,
-  ],
+  exports: [AIRouter, QdrantProvider, AIService],
 })
 export class AIModule {}

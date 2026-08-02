@@ -1,9 +1,4 @@
-import {
-  IsArray,
-  IsIn,
-  IsString,
-  ValidateNested,
-} from 'class-validator';
+import { IsArray, IsIn, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class ChatMessageDto {

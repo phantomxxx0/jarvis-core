@@ -17,9 +17,7 @@ import { KnowledgeMemoryMapper } from './mappers/knowledge-memory.mapper';
 
 @Injectable()
 export class KnowledgeService {
-  private readonly logger = new Logger(
-    KnowledgeService.name,
-  );
+  private readonly logger = new Logger(KnowledgeService.name);
 
   constructor(
     private readonly extractor: KnowledgeExtractorService,
@@ -34,158 +32,93 @@ export class KnowledgeService {
     userId: string,
     messages: ChatMessage[],
   ): Promise<void> {
-    this.logger.log(
-      '===== KNOWLEDGE PIPELINE START =====',
-    );
+    this.logger.log('===== KNOWLEDGE PIPELINE START =====');
 
     const latestUserMessage = [...messages]
       .reverse()
       .find((m) => m.role === 'user');
 
     if (!latestUserMessage) {
-      this.logger.log(
-        'No latest user message found.',
-      );
+      this.logger.log('No latest user message found.');
       return;
     }
 
-    this.logger.log(
-      `Latest message: ${latestUserMessage.content}`,
-    );
+    this.logger.log(`Latest message: ${latestUserMessage.content}`);
 
-    const facts = this.extractor.extract(
-      latestUserMessage.content,
-    );
+    const facts = this.extractor.extract(latestUserMessage.content);
 
-    this.logger.log(
-      `Facts extracted: ${facts.length}`,
-    );
+    this.logger.log(`Facts extracted: ${facts.length}`);
 
     console.dir(facts, { depth: null });
 
     if (facts.length === 0) {
-      this.logger.debug(
-        'No durable knowledge extracted.',
-      );
+      this.logger.debug('No durable knowledge extracted.');
       return;
     }
 
-    this.logger.log(
-      `Extracted ${facts.length} knowledge facts.`,
-    );
+    this.logger.log(`Extracted ${facts.length} knowledge facts.`);
 
     for (const fact of facts) {
       try {
-        this.logger.log(
-          `Processing fact: ${fact.canonical}`,
-        );
+        this.logger.log(`Processing fact: ${fact.canonical}`);
 
-        const existing =
-          await this.lookup.findExisting(
-            userId,
-            fact,
-          );
+        const existing = await this.lookup.findExisting(userId, fact);
 
-        this.logger.log(
-          `Lookup result: ${
-            existing ? 'FOUND' : 'NOT FOUND'
-          }`,
-        );
+        this.logger.log(`Lookup result: ${existing ? 'FOUND' : 'NOT FOUND'}`);
 
-        const comparison =
-          this.comparator.compare(
-            fact,
-            existing?.fact,
-          );
+        const comparison = this.comparator.compare(fact, existing?.fact);
 
-        this.logger.log(
-          `Comparison: ${comparison}`,
-        );
+        this.logger.log(`Comparison: ${comparison}`);
 
-        if (
-          !this.policy.shouldStore(
-            comparison,
-          )
-        ) {
-          this.logger.log(
-            `Skipping ${comparison}: ${fact.canonical}`,
-          );
+        if (!this.policy.shouldStore(comparison)) {
+          this.logger.log(`Skipping ${comparison}: ${fact.canonical}`);
 
           continue;
         }
 
         switch (comparison) {
           case ComparisonResult.NEW:
-            this.logger.log(
-              `New knowledge: ${fact.canonical}`,
-            );
+            this.logger.log(`New knowledge: ${fact.canonical}`);
             break;
 
           case ComparisonResult.DUPLICATE:
-            this.logger.log(
-              `Duplicate ignored: ${fact.canonical}`,
-            );
+            this.logger.log(`Duplicate ignored: ${fact.canonical}`);
             continue;
 
           case ComparisonResult.UPDATE:
-            this.logger.log(
-              `Updating knowledge: ${fact.canonical}`,
-            );
+            this.logger.log(`Updating knowledge: ${fact.canonical}`);
 
             if (existing) {
-              await this.memoriesService.archive(
-                userId,
-                existing.memory.id,
-              );
+              await this.memoriesService.archive(userId, existing.memory.id);
             }
 
             break;
 
           case ComparisonResult.CONFLICT:
-            this.logger.warn(
-              `Conflict detected: ${fact.canonical}`,
-            );
+            this.logger.warn(`Conflict detected: ${fact.canonical}`);
 
             if (existing) {
-              await this.memoriesService.archive(
-                userId,
-                existing.memory.id,
-              );
+              await this.memoriesService.archive(userId, existing.memory.id);
             }
 
             break;
         }
 
-        const memory =
-          KnowledgeMemoryMapper.toMemory(
-            userId,
-            fact,
-          );
+        const memory = KnowledgeMemoryMapper.toMemory(userId, fact);
 
-        const storedMemory =
-          await this.memoriesService.create(
-            memory,
-          );
+        const storedMemory = await this.memoriesService.create(memory);
 
-        await this.memoryIndexService.index(
-          storedMemory,
-        );
+        await this.memoryIndexService.index(storedMemory);
 
-        this.logger.log(
-          `Stored and indexed: ${fact.canonical}`,
-        );
+        this.logger.log(`Stored and indexed: ${fact.canonical}`);
       } catch (error) {
         this.logger.warn(
           `Failed to process: ${fact.canonical}`,
-          error instanceof Error
-            ? error.stack
-            : String(error),
+          error instanceof Error ? error.stack : String(error),
         );
       }
     }
 
-    this.logger.log(
-      '===== KNOWLEDGE PIPELINE END =====',
-    );
+    this.logger.log('===== KNOWLEDGE PIPELINE END =====');
   }
 }

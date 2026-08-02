@@ -5,10 +5,7 @@ import { ComparisonResult } from './comparison-result';
 
 @Injectable()
 export class KnowledgeComparatorService {
-  compare(
-    incoming: KnowledgeFact,
-    existing?: KnowledgeFact,
-  ): ComparisonResult {
+  compare(incoming: KnowledgeFact, existing?: KnowledgeFact): ComparisonResult {
     if (!existing) {
       return ComparisonResult.NEW;
     }

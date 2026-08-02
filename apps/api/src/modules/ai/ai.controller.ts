@@ -8,19 +8,11 @@ import { ChatDto } from './dto/chat.dto';
 
 @Controller('ai')
 export class AIController {
-  constructor(
-    private readonly aiService: AIService,
-  ) {}
+  constructor(private readonly aiService: AIService) {}
 
   @Post('chat')
-  async chat(
-    @CurrentUser() user: JwtPayload,
-    @Body() dto: ChatDto,
-  ) {
-    const answer = await this.aiService.chat(
-      user.id,
-      dto.messages,
-    );
+  async chat(@CurrentUser() user: JwtPayload, @Body() dto: ChatDto) {
+    const answer = await this.aiService.chat(user.id, dto.messages);
 
     return {
       answer,

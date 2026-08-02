@@ -4,9 +4,7 @@ import { ComparisonResult } from '../evolution/comparison-result';
 
 @Injectable()
 export class KnowledgePolicyService {
-  shouldStore(
-    result: ComparisonResult,
-  ): boolean {
+  shouldStore(result: ComparisonResult): boolean {
     switch (result) {
       case ComparisonResult.NEW:
         return true;

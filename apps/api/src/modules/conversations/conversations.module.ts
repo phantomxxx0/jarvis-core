@@ -4,12 +4,7 @@ import { ConversationsRepository } from './repositories/conversations.repository
 import { ConversationsService } from './conversations.service';
 
 @Module({
-  providers: [
-    ConversationsRepository,
-    ConversationsService,
-  ],
-  exports: [
-    ConversationsService,
-  ],
+  providers: [ConversationsRepository, ConversationsService],
+  exports: [ConversationsService],
 })
 export class ConversationsModule {}

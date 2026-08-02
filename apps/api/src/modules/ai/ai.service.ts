@@ -7,6 +7,7 @@ import { PromptBuilderService } from './services/prompt-builder.service';
 
 import { ConversationsService } from '../conversations/conversations.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
+import { WorkerRegistryService } from '../workers/registry/worker-registry.service';
 
 @Injectable()
 export class AIService {
@@ -16,44 +17,37 @@ export class AIService {
     private readonly promptBuilder: PromptBuilderService,
     private readonly conversationsService: ConversationsService,
     private readonly knowledgeService: KnowledgeService,
+    private readonly workerRegistry: WorkerRegistryService,
   ) {}
 
-  async chat(
-    userId: string,
-    messages: ChatMessage[],
-  ): Promise<string> {
+  async chat(userId: string, messages: ChatMessage[]): Promise<string> {
     const latestMessage = messages.at(-1);
 
     if (!latestMessage) {
       throw new Error('No chat messages provided.');
     }
 
-    // Save the user's latest message
-    await this.conversationsService.saveMessage(
+    await this.conversationsService.saveMessage(userId, latestMessage);
+
+    const history = await this.conversationsService.getRecentMessages(
       userId,
-      latestMessage,
+      10,
     );
 
-    // Load recent conversation history
-    const history =
-      await this.conversationsService.getRecentMessages(
-        userId,
-        10,
-      );
+    const worker = await this.workerRegistry.getById('embedding-worker');
+    if (!worker) {
+      throw new Error('Embedding worker not found in registry');
+    }
 
-    // Generate embedding for the latest user message
-    const embedding = await this.aiRouter.embed(
-      latestMessage.content,
-    );
+    const result = await worker.execute({ input: latestMessage.content });
+    if (!result.success || !result.data) {
+      throw new Error(result.error?.message || 'Embedding generation failed');
+    }
 
-    // Retrieve relevant semantic memories
-    const memories =
-      await this.qdrantProvider.searchMemory(
-        embedding,
-        5,
-      );
+    const embedding = result.data as number[];
 
-    // Build semantic memory context
+    const memories = await this.qdrantProvider.searchMemory(embedding, 5);
+
     const memoryContext = memories.map((memory) => ({
       id: String(memory.id),
       score: memory.score ?? 0,
@@ -63,40 +57,37 @@ export class AIService {
           : '',
     }));
 
-    // Build final prompt
-    const prompt = this.promptBuilder.build(
-      history,
-      memoryContext,
-    );
+    const prompt = this.promptBuilder.build(history, memoryContext);
 
-    // Generate assistant response
     const answer = await this.aiRouter.chat(prompt);
 
-    // Save assistant response
     const assistantMessage: ChatMessage = {
       role: 'assistant',
       content: answer,
     };
 
-    await this.conversationsService.saveMessage(
-      userId,
-      assistantMessage,
-    );
+    await this.conversationsService.saveMessage(userId, assistantMessage);
 
-    // Learn from the completed conversation
-    await this.knowledgeService.learnFromConversation(
-      userId,
-      [
-        ...history,
-        assistantMessage,
-      ],
-    );
+    await this.knowledgeService.learnFromConversation(userId, [
+      ...history,
+      assistantMessage,
+    ]);
 
     return answer;
   }
 
-  embed(text: string) {
-    return this.aiRouter.embed(text);
+  async embed(text: string) {
+    const worker = await this.workerRegistry.getById('embedding-worker');
+    if (!worker) {
+      throw new Error('Embedding worker not found in registry');
+    }
+
+    const result = await worker.execute({ input: text });
+    if (!result.success || !result.data) {
+      throw new Error(result.error?.message || 'Embedding generation failed');
+    }
+
+    return result.data as number[];
   }
 
   reason(prompt: string) {

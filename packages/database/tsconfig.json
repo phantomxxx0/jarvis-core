@@ -4,8 +4,7 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "module": "CommonJS",
-    "moduleResolution": "Node",
-    "target": "ES2023",
+"moduleResolution": "Node10",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true

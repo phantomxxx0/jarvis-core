@@ -27,10 +27,6 @@ export class AIRouter {
     return this.localWorker;
   }
 
-  embed(text: string) {
-    return this.getWorker().embed(text);
-  }
-
   chat(messages: ChatMessage[]) {
     return this.getWorker().chat(messages);
   }

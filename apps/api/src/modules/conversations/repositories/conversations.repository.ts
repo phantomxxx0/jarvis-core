@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { asc, desc, eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 
 import { conversations } from '@jarvis/database';
 
@@ -13,9 +13,7 @@ export interface CreateConversationData {
 
 @Injectable()
 export class ConversationsRepository {
-  constructor(
-    private readonly database: DatabaseService,
-  ) {}
+  constructor(private readonly database: DatabaseService) {}
 
   async create(data: CreateConversationData) {
     const [conversation] = await this.database.db
@@ -26,10 +24,7 @@ export class ConversationsRepository {
     return conversation;
   }
 
-  async findRecent(
-    userId: string,
-    limit = 10,
-  ) {
+  async findRecent(userId: string, limit = 10) {
     const rows = await this.database.db
       .select()
       .from(conversations)

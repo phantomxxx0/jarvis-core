@@ -2,13 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
-import type { AxiosResponse } from 'axios';
 
 import { ChatMessage } from '../../ai/interfaces/chat-message.interface';
-
-type EmbedResponse = {
-  embeddings: number[][];
-};
 
 type ChatResponse = {
   message: {
@@ -27,21 +22,6 @@ export class OllamaProvider {
     private readonly config: ConfigService,
   ) {}
 
-  async embed(text: string): Promise<number[]> {
-    const model = this.config.getOrThrow<string>('OLLAMA_EMBED_MODEL');
-
-    const response = await firstValueFrom(
-      this.http.post<EmbedResponse>('/api/embed', {
-        model,
-        input: text,
-      }),
-    );
-
-    const embeddings = (response as AxiosResponse<EmbedResponse>).data.embeddings;
-
-    return embeddings[0];
-  }
-
   async chat(messages: ChatMessage[]): Promise<string> {
     const model = this.config.getOrThrow<string>('OLLAMA_CHAT_MODEL');
 
@@ -53,7 +33,7 @@ export class OllamaProvider {
       }),
     );
 
-    return (response as AxiosResponse<ChatResponse>).data.message.content;
+    return response.data.message.content;
   }
 
   async reason(prompt: string): Promise<string> {
@@ -67,6 +47,6 @@ export class OllamaProvider {
       }),
     );
 
-    return (response as AxiosResponse<ReasonResponse>).data.response;
+    return response.data.response;
   }
 }

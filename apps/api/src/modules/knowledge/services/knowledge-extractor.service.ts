@@ -21,23 +21,17 @@ export class KnowledgeExtractorService {
   ) {}
 
   extract(text: string): KnowledgeFact[] {
-    const normalized =
-      this.normalizer.normalize(text);
+    const normalized = this.normalizer.normalize(text);
 
-    let facts =
-      this.canonicalizer.canonicalize(normalized);
+    let facts = this.canonicalizer.canonicalize(normalized);
 
-    facts =
-      this.validator.validate(facts);
+    facts = this.validator.validate(facts);
 
-    facts =
-      this.confidence.score(facts);
+    facts = this.confidence.score(facts);
 
-    facts =
-      this.importance.rank(facts);
+    facts = this.importance.rank(facts);
 
-    facts =
-      this.deduplicator.process(facts);
+    facts = this.deduplicator.process(facts);
 
     return facts;
   }

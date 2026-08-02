@@ -26,9 +26,7 @@ export class NormalizerService {
     //
     // Sentence capitalization
     //
-    normalized =
-      normalized.charAt(0).toUpperCase() +
-      normalized.slice(1);
+    normalized = normalized.charAt(0).toUpperCase() + normalized.slice(1);
 
     //
     // Final punctuation

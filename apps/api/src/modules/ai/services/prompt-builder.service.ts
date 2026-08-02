@@ -10,18 +10,12 @@ export interface MemoryContext {
 
 @Injectable()
 export class PromptBuilderService {
-  build(
-    messages: ChatMessage[],
-    memories: MemoryContext[],
-  ): ChatMessage[] {
+  build(messages: ChatMessage[], memories: MemoryContext[]): ChatMessage[] {
     const memorySection =
       memories.length === 0
         ? 'No verified long-term memories were retrieved.'
         : memories
-            .map(
-              (memory, index) =>
-                `${index + 1}. ${memory.content}`,
-            )
+            .map((memory, index) => `${index + 1}. ${memory.content}`)
             .join('\n');
 
     const systemPrompt = `

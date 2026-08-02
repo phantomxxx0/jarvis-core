@@ -5,19 +5,14 @@ import { KnowledgeSource } from '../types/knowledge-source';
 
 @Injectable()
 export class ConfidenceService {
-  score(
-    facts: KnowledgeFact[],
-  ): KnowledgeFact[] {
+  score(facts: KnowledgeFact[]): KnowledgeFact[] {
     return facts.map((fact) => ({
       ...fact,
-      confidence:
-        fact.confidence ?? this.defaultConfidence(fact),
+      confidence: fact.confidence ?? this.defaultConfidence(fact),
     }));
   }
 
-  private defaultConfidence(
-    fact: KnowledgeFact,
-  ): number {
+  private defaultConfidence(fact: KnowledgeFact): number {
     switch (fact.source) {
       case KnowledgeSource.MANUAL:
         return 1.0;
@@ -26,10 +21,10 @@ export class ConfidenceService {
         return 0.95;
 
       case KnowledgeSource.VOICE:
-        return 0.90;
+        return 0.9;
 
       case KnowledgeSource.VISION:
-        return 0.90;
+        return 0.9;
 
       case KnowledgeSource.DOCUMENT:
         return 0.85;
@@ -38,7 +33,7 @@ export class ConfidenceService {
         return 0.99;
 
       default:
-        return 0.80;
+        return 0.8;
     }
   }
 }

@@ -6,13 +6,9 @@ import { NameRule } from '../rules/name.rule';
 
 @Injectable()
 export class CanonicalizerService {
-  private readonly rules = [
-    new NameRule(),
-  ];
+  private readonly rules = [new NameRule()];
 
-  canonicalize(
-    text: string,
-  ): KnowledgeFact[] {
+  canonicalize(text: string): KnowledgeFact[] {
     const facts: KnowledgeFact[] = [];
 
     for (const rule of this.rules) {

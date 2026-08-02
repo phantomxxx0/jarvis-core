@@ -8,19 +8,19 @@ export class FriendWorker implements AIWorker {
 
   readonly name = 'Friend GPU';
 
-  async health(): Promise<boolean> {
-    return false;
+  health(): Promise<boolean> {
+    return Promise.resolve(false);
   }
 
-  async chat(): Promise<never> {
-    throw new Error('Friend worker not configured');
+  chat(): Promise<never> {
+    return Promise.reject(new Error('Friend worker not configured'));
   }
 
-  async embed(): Promise<never> {
-    throw new Error('Friend worker not configured');
+  embed(): Promise<never> {
+    return Promise.reject(new Error('Friend worker not configured'));
   }
 
-  async reason(): Promise<never> {
-    throw new Error('Friend worker not configured');
+  reason(): Promise<never> {
+    return Promise.reject(new Error('Friend worker not configured'));
   }
 }

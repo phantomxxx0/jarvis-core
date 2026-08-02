@@ -36,16 +36,10 @@ export class MemoriesController {
   findAll(@CurrentUser() user: JwtPayload) {
     return this.memoriesService.findByUserId(user.id);
   }
-@Get('search')
-search(
-  @CurrentUser() user: JwtPayload,
-  @Query('q') query: string,
-) {
-  return this.memoriesService.searchSimilar(
-    user.id,
-    query,
-  );
-}
+  @Get('search')
+  search(@CurrentUser() user: JwtPayload, @Query('q') query: string) {
+    return this.memoriesService.searchSimilar(user.id, query);
+  }
 
   @Get(':id')
   findOne(@CurrentUser() user: JwtPayload, @Param('id') id: string) {

@@ -4,9 +4,7 @@ import { KnowledgeFact } from '../interfaces/knowledge-fact.interface';
 
 @Injectable()
 export class DeduplicatorService {
-  process(
-    facts: KnowledgeFact[],
-  ): KnowledgeFact[] {
+  process(facts: KnowledgeFact[]): KnowledgeFact[] {
     const seen = new Set<string>();
 
     return facts.filter((fact) => {

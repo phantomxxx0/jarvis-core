@@ -6,9 +6,7 @@ import { NameRule } from './name.rule';
 
 @Injectable()
 export class RuleRegistry {
-  private readonly rules: KnowledgeRule[] = [
-    new NameRule(),
-  ];
+  private readonly rules: KnowledgeRule[] = [new NameRule()];
 
   getRules(): KnowledgeRule[] {
     return this.rules;

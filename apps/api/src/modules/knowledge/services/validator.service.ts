@@ -4,9 +4,7 @@ import { KnowledgeFact } from '../interfaces/knowledge-fact.interface';
 
 @Injectable()
 export class ValidatorService {
-  validate(
-    facts: KnowledgeFact[],
-  ): KnowledgeFact[] {
+  validate(facts: KnowledgeFact[]): KnowledgeFact[] {
     return facts.filter((fact) => {
       return (
         !!fact.subject &&

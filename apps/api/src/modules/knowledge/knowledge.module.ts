@@ -20,9 +20,7 @@ import { RuleRegistry } from './rules/rule.registry';
 import { NameRule } from './rules/name.rule';
 
 @Module({
-  imports: [
-    MemoriesModule,
-  ],
+  imports: [MemoriesModule],
 
   providers: [
     // Core

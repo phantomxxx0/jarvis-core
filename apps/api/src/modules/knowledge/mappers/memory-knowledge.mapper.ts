@@ -20,76 +20,53 @@ interface KnowledgeMetadata {
 }
 
 export class MemoryKnowledgeMapper {
-  static toKnowledgeFact(
-    memory: {
-      id: string;
+  static toKnowledgeFact(memory: {
+    id: string;
 
-      content: string;
+    content: string;
 
-      importance: number;
+    importance: number;
 
-      status: string;
+    status: string;
 
-      metadata: unknown;
+    metadata: unknown;
 
-      createdAt: Date;
+    createdAt: Date;
 
-      updatedAt: Date;
-    },
-  ): KnowledgeFact {
-    const metadata =
-      (memory.metadata ?? {}) as KnowledgeMetadata;
+    updatedAt: Date;
+  }): KnowledgeFact {
+    const metadata = (memory.metadata ?? {}) as KnowledgeMetadata;
 
     return {
       id: memory.id,
 
-      subject:
-        metadata.subject ??
-        KnowledgeSubject.USER,
+      subject: metadata.subject ?? KnowledgeSubject.USER,
 
-      predicate:
-        metadata.predicate ??
-        KnowledgePredicate.NAME,
+      predicate: metadata.predicate ?? KnowledgePredicate.NAME,
 
-      object:
-        metadata.object ?? '',
+      object: metadata.object ?? '',
 
-      canonical:
-        memory.content,
+      canonical: memory.content,
 
-      confidence:
-        metadata.confidence ?? 0.8,
+      confidence: metadata.confidence ?? 0.8,
 
-      importance:
-        memory.importance,
+      importance: memory.importance,
 
-      source:
-        metadata.source ??
-        KnowledgeSource.CONVERSATION,
+      source: metadata.source ?? KnowledgeSource.CONVERSATION,
 
-      status:
-        this.mapStatus(memory.status),
+      status: this.mapStatus(memory.status),
 
-      version:
-        metadata.version ?? 1,
+      version: metadata.version ?? 1,
 
-      createdAt:
-        memory.createdAt,
+      createdAt: memory.createdAt,
 
-      updatedAt:
-        memory.updatedAt,
+      updatedAt: memory.updatedAt,
 
-      metadata:
-        memory.metadata as Record<
-          string,
-          unknown
-        >,
+      metadata: memory.metadata as Record<string, unknown>,
     };
   }
 
-  private static mapStatus(
-    status: string,
-  ): KnowledgeStatus {
+  private static mapStatus(status: string): KnowledgeStatus {
     switch (status.toUpperCase()) {
       case 'ACTIVE':
         return KnowledgeStatus.ACTIVE;

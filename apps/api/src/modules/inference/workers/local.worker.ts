@@ -11,9 +11,7 @@ export class LocalWorker implements AIWorker {
 
   readonly name = 'Local Worker';
 
-  constructor(
-    private readonly ollamaProvider: OllamaProvider,
-  ) {}
+  constructor(private readonly ollamaProvider: OllamaProvider) {}
 
   health(): Promise<boolean> {
     return Promise.resolve(true);
@@ -21,10 +19,6 @@ export class LocalWorker implements AIWorker {
 
   chat(messages: ChatMessage[]): Promise<string> {
     return this.ollamaProvider.chat(messages);
-  }
-
-  embed(text: string): Promise<number[]> {
-    return this.ollamaProvider.embed(text);
   }
 
   reason(prompt: string): Promise<string> {

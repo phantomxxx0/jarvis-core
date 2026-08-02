@@ -9,18 +9,13 @@ import {
 
 @Injectable()
 export class ConversationsService {
-  constructor(
-    private readonly repository: ConversationsRepository,
-  ) {}
+  constructor(private readonly repository: ConversationsRepository) {}
 
   create(data: CreateConversationData) {
     return this.repository.create(data);
   }
 
-  async saveMessage(
-    userId: string,
-    message: ChatMessage,
-  ) {
+  async saveMessage(userId: string, message: ChatMessage) {
     return this.repository.create({
       userId,
       role: message.role,
@@ -28,14 +23,8 @@ export class ConversationsService {
     });
   }
 
-  async getRecentMessages(
-    userId: string,
-    limit = 10,
-  ): Promise<ChatMessage[]> {
-    const rows = await this.repository.findRecent(
-      userId,
-      limit,
-    );
+  async getRecentMessages(userId: string, limit = 10): Promise<ChatMessage[]> {
+    const rows = await this.repository.findRecent(userId, limit);
 
     return rows.map((row) => ({
       role: row.role as ChatMessage['role'],
