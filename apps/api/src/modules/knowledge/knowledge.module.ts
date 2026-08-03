@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 
 import { MemoriesModule } from '../memories/memories.module';
 
+import { KnowledgeController } from './knowledge.controller';
 import { KnowledgeService } from './knowledge.service';
+import { CodebaseIndexerService } from './services/codebase-indexer.service';
 
 import { KnowledgeExtractorService } from './services/knowledge-extractor.service';
 import { KnowledgeLookupService } from './services/knowledge-lookup.service';
@@ -22,9 +24,12 @@ import { NameRule } from './rules/name.rule';
 @Module({
   imports: [MemoriesModule],
 
+  controllers: [KnowledgeController],
+
   providers: [
     // Core
     KnowledgeService,
+    CodebaseIndexerService,
 
     // Pipeline
     KnowledgeExtractorService,
@@ -50,6 +55,7 @@ import { NameRule } from './rules/name.rule';
   exports: [
     // Core
     KnowledgeService,
+    CodebaseIndexerService,
 
     // Pipeline
     KnowledgeExtractorService,
@@ -72,4 +78,4 @@ import { NameRule } from './rules/name.rule';
     RuleRegistry,
   ],
 })
-export class KnowledgeModule {}
+export class KnowledgeModule { }

@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ConversationsModule } from '../conversations/conversations.module';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { WorkersModule } from '../workers/workers.module';
+import { BrainModule } from '../brain/brain.module'; // <-- 1. Import BrainModule
 
 import { AIController } from './ai.controller';
 import { AIService } from './ai.service';
@@ -25,6 +26,7 @@ import { FriendWorker } from '../inference/workers/friend.worker';
     ConversationsModule,
     KnowledgeModule,
     WorkersModule,
+    BrainModule, // <-- 2. Add BrainModule to imports so BrainService is available to AIController
 
     HttpModule.registerAsync({
       imports: [ConfigModule],
@@ -54,4 +56,4 @@ import { FriendWorker } from '../inference/workers/friend.worker';
 
   exports: [AIRouter, QdrantProvider, AIService],
 })
-export class AIModule {}
+export class AIModule { }

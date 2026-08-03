@@ -1,16 +1,20 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 
-import { WorkersModule } from '../workers.module';
+import { WorkerRegistryModule } from '../registry/worker-registry.module';
 import { WorkerRegistryService } from '../registry/worker-registry.service';
+import { OllamaModule } from '../shared/ollama/ollama.module';
 
 import { ProviderRegistryService } from './registry/provider-registry.service';
 import { EmbeddingService } from './services/embedding.service';
-import { EmbeddingWorker } from './embedding.worker';
 import { OllamaProvider } from './providers/ollama/ollama.provider';
+import { EmbeddingWorker } from './embedding.worker';
 
+/**
+ * Module responsible for AI embedding capability generation.
+ */
 @Module({
-  imports: [HttpModule, WorkersModule],
+  imports: [HttpModule, WorkerRegistryModule, OllamaModule],
   providers: [
     ProviderRegistryService,
     OllamaProvider,
@@ -30,7 +34,9 @@ export class EmbeddingModule implements OnModuleInit {
 
   async onModuleInit(): Promise<void> {
     this.providerRegistry.registerProvider(this.ollamaProvider);
+
     await this.embeddingService.initializeProviders();
+
     await this.workerRegistry.register(this.embeddingWorker);
   }
 }

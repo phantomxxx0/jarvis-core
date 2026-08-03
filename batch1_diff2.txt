@@ -1,0 +1,355 @@
+diff --git a/apps/api/src/modules/brain/intent/intent.prompt-builder.ts b/apps/api/src/modules/brain/intent/intent.prompt-builder.ts
+new file mode 100644
+index 0000000..3a0934a
+--- /dev/null
++++ b/apps/api/src/modules/brain/intent/intent.prompt-builder.ts
+@@ -0,0 +1,31 @@
++export class IntentPromptBuilder {
++  static build(query: string, contextString: string): string {
++    return `You are the central intent understanding engine for Jarvis.
++Your task is to classify the user's intent into a structured JSON object.
++
++<context>
++${contextString}
++</context>
++
++<user_query>
++${query}
++</user_query>
++
++You must respond ONLY with a valid JSON object. Do not include markdown formatting or conversational text.
++
++The JSON object must match this schema exactly:
++{
++  "version": 1,
++  "intent": "string (the semantic action, e.g. 'plan_trip', 'answer_question', 'write_code', 'recall_memory')",
++  "confidence": 0.95,
++  "entities": { "semanticKey": "extractedValue" },
++  "goal": "string (a clear summary of what the user is trying to accomplish)",
++  "constraints": ["string (any explicit constraints)"],
++  "requiresMemory": false,
++  "requiresKnowledge": false,
++  "requiresPlanning": false,
++  "requiresTools": false,
++  "capabilities": ["string (capabilities needed, e.g. CHAT, SEARCH, PLANNING, MEMORY, CODING)"]
++}`;
++  }
++}
+diff --git a/apps/api/src/modules/brain/intent/pipeline/intent.classification.ts b/apps/api/src/modules/brain/intent/pipeline/intent.classification.ts
+new file mode 100644
+index 0000000..2c80288
+--- /dev/null
++++ b/apps/api/src/modules/brain/intent/pipeline/intent.classification.ts
+@@ -0,0 +1,13 @@
++export interface IntentClassification {
++  version: number;
++  type: string;
++  confidence: number;
++  entities: Record<string, unknown>;
++  goal: string;
++  constraints: string[];
++  requiresMemory: boolean;
++  requiresKnowledge: boolean;
++  requiresPlanning: boolean;
++  requiresTools: boolean;
++  capabilities: string[];
++}
+diff --git a/apps/api/src/modules/brain/intent/pipeline/intent.normalizer.ts b/apps/api/src/modules/brain/intent/pipeline/intent.normalizer.ts
+new file mode 100644
+index 0000000..59b34d1
+--- /dev/null
++++ b/apps/api/src/modules/brain/intent/pipeline/intent.normalizer.ts
+@@ -0,0 +1,39 @@
++import { IntentClassification } from './intent.classification';
++
++export class IntentNormalizer {
++  static normalize(rawJson: Record<string, unknown>): IntentClassification {
++    return {
++      version: 1,
++      type: typeof rawJson.intent === 'string' ? rawJson.intent : 'UNKNOWN',
++      confidence: Math.max(0, Math.min(1, Number(rawJson.confidence) || 0)), // clamp confidence
++      entities: (rawJson.entities as Record<string, unknown>) || {},
++      goal: typeof rawJson.goal === 'string' ? rawJson.goal : '',
++      constraints: Array.isArray(rawJson.constraints)
++        ? (rawJson.constraints as string[])
++        : [],
++      requiresMemory: !!rawJson.requiresMemory,
++      requiresKnowledge: !!rawJson.requiresKnowledge,
++      requiresPlanning: !!rawJson.requiresPlanning,
++      requiresTools: !!rawJson.requiresTools,
++      capabilities: Array.isArray(rawJson.capabilities)
++        ? (rawJson.capabilities as string[])
++        : [],
++    };
++  }
++
++  static getFallbackIntent(query: string): IntentClassification {
++    return {
++      version: 1,
++      type: 'UNKNOWN',
++      confidence: 1.0,
++      entities: {},
++      goal: query,
++      constraints: [],
++      requiresMemory: false,
++      requiresKnowledge: false,
++      requiresPlanning: false,
++      requiresTools: false,
++      capabilities: [],
++    };
++  }
++}
+diff --git a/apps/api/src/modules/brain/intent/pipeline/intent.parser.ts b/apps/api/src/modules/brain/intent/pipeline/intent.parser.ts
+new file mode 100644
+index 0000000..28f4c1d
+--- /dev/null
++++ b/apps/api/src/modules/brain/intent/pipeline/intent.parser.ts
+@@ -0,0 +1,9 @@
++export class IntentParser {
++  static parse(llmOutput: string): Record<string, unknown> {
++    try {
++      return JSON.parse(llmOutput) as Record<string, unknown>;
++    } catch {
++      throw new Error('ParseError');
++    }
++  }
++}
+diff --git a/apps/api/src/modules/brain/intent/pipeline/intent.validator.ts b/apps/api/src/modules/brain/intent/pipeline/intent.validator.ts
+new file mode 100644
+index 0000000..b61f565
+--- /dev/null
++++ b/apps/api/src/modules/brain/intent/pipeline/intent.validator.ts
+@@ -0,0 +1,32 @@
++export class IntentValidator {
++  static validate(
++    rawJson: Record<string, unknown> | null | undefined,
++  ): boolean {
++    if (!rawJson || typeof rawJson !== 'object') {
++      return false;
++    }
++
++    if (rawJson.version !== 1) {
++      return false;
++    }
++
++    if (typeof rawJson.intent !== 'string') {
++      return false;
++    }
++
++    const confidence = rawJson.confidence;
++    if (typeof confidence !== 'number' || confidence < 0 || confidence > 1) {
++      return false;
++    }
++
++    if (!rawJson.entities || typeof rawJson.entities !== 'object') {
++      return false;
++    }
++
++    if (!Array.isArray(rawJson.capabilities)) {
++      return false;
++    }
++
++    return true;
++  }
++}
+diff --git a/batch1_diff.txt b/batch1_diff.txt
+new file mode 100644
+index 0000000..1423f61
+--- /dev/null
++++ b/batch1_diff.txt
+@@ -0,0 +1,195 @@
++diff --git a/apps/api/src/modules/brain/contracts/intent.ts b/apps/api/src/modules/brain/contracts/intent.ts
++index e8c44d8..dc55663 100644
++--- a/apps/api/src/modules/brain/contracts/intent.ts
+++++ b/apps/api/src/modules/brain/contracts/intent.ts
++@@ -1,7 +1,20 @@
++ export interface Intent {
+++  // Legacy Phase 2 fields (maintained for backward compatibility during Batch 1)
++   id: string;
++-  category: 'QUERY' | 'COMMAND' | 'EXPLORATION' | 'DEBUG';
+++  category: string;
++   objective: string;
++   parameters: Record<string, unknown>;
+++
+++  // Phase 3.1 fields (optional until Batch 2/3 fully implement them)
+++  version?: number;
+++  type?: string;
++   confidence: number;
+++  entities?: Record<string, unknown>;
+++  goal?: string;
+++  constraints?: string[];
+++  requiresMemory?: boolean;
+++  requiresKnowledge?: boolean;
+++  requiresPlanning?: boolean;
+++  requiresTools?: boolean;
+++  capabilities?: string[];
++ }
++diff --git a/apps/api/src/modules/brain/intent/intent.prompt-builder.ts b/apps/api/src/modules/brain/intent/intent.prompt-builder.ts
++new file mode 100644
++index 0000000..3a0934a
++--- /dev/null
+++++ b/apps/api/src/modules/brain/intent/intent.prompt-builder.ts
++@@ -0,0 +1,31 @@
+++export class IntentPromptBuilder {
+++  static build(query: string, contextString: string): string {
+++    return `You are the central intent understanding engine for Jarvis.
+++Your task is to classify the user's intent into a structured JSON object.
+++
+++<context>
+++${contextString}
+++</context>
+++
+++<user_query>
+++${query}
+++</user_query>
+++
+++You must respond ONLY with a valid JSON object. Do not include markdown formatting or conversational text.
+++
+++The JSON object must match this schema exactly:
+++{
+++  "version": 1,
+++  "intent": "string (the semantic action, e.g. 'plan_trip', 'answer_question', 'write_code', 'recall_memory')",
+++  "confidence": 0.95,
+++  "entities": { "semanticKey": "extractedValue" },
+++  "goal": "string (a clear summary of what the user is trying to accomplish)",
+++  "constraints": ["string (any explicit constraints)"],
+++  "requiresMemory": false,
+++  "requiresKnowledge": false,
+++  "requiresPlanning": false,
+++  "requiresTools": false,
+++  "capabilities": ["string (capabilities needed, e.g. CHAT, SEARCH, PLANNING, MEMORY, CODING)"]
+++}`;
+++  }
+++}
++diff --git a/apps/api/src/modules/brain/intent/pipeline/intent.normalizer.ts b/apps/api/src/modules/brain/intent/pipeline/intent.normalizer.ts
++new file mode 100644
++index 0000000..bc1473c
++--- /dev/null
+++++ b/apps/api/src/modules/brain/intent/pipeline/intent.normalizer.ts
++@@ -0,0 +1,51 @@
+++import { Intent } from '../../contracts/intent';
+++
+++export class IntentNormalizer {
+++  static normalize(rawJson: Record<string, unknown>): Intent {
+++    return {
+++      version: 1,
+++      type: typeof rawJson.intent === 'string' ? rawJson.intent : 'UNKNOWN',
+++      confidence: Math.max(0, Math.min(1, Number(rawJson.confidence) || 0)), // clamp confidence
+++      entities: (rawJson.entities as Record<string, unknown>) || {},
+++      goal: typeof rawJson.goal === 'string' ? rawJson.goal : '',
+++      constraints: Array.isArray(rawJson.constraints)
+++        ? (rawJson.constraints as string[])
+++        : [],
+++      requiresMemory: !!rawJson.requiresMemory,
+++      requiresKnowledge: !!rawJson.requiresKnowledge,
+++      requiresPlanning: !!rawJson.requiresPlanning,
+++      requiresTools: !!rawJson.requiresTools,
+++      capabilities: Array.isArray(rawJson.capabilities)
+++        ? (rawJson.capabilities as string[])
+++        : ['CHAT'],
+++
+++      // Backward compatibility during migration:
+++      id: '00000000-0000-0000-0000-000000000000',
+++      category: typeof rawJson.intent === 'string' ? rawJson.intent : 'UNKNOWN',
+++      objective: typeof rawJson.goal === 'string' ? rawJson.goal : '',
+++      parameters: {},
+++    };
+++  }
+++
+++  static getFallbackIntent(query: string): Intent {
+++    return {
+++      version: 1,
+++      type: 'UNKNOWN',
+++      confidence: 1.0,
+++      entities: {},
+++      goal: query,
+++      constraints: [],
+++      requiresMemory: false,
+++      requiresKnowledge: false,
+++      requiresPlanning: true, // fallback to planning if we don't know
+++      requiresTools: false,
+++      capabilities: ['CHAT'],
+++
+++      // Backward compatibility during migration:
+++      id: '00000000-0000-0000-0000-000000000000',
+++      category: 'UNKNOWN',
+++      objective: query,
+++      parameters: {},
+++    };
+++  }
+++}
++diff --git a/apps/api/src/modules/brain/intent/pipeline/intent.parser.ts b/apps/api/src/modules/brain/intent/pipeline/intent.parser.ts
++new file mode 100644
++index 0000000..ac4047f
++--- /dev/null
+++++ b/apps/api/src/modules/brain/intent/pipeline/intent.parser.ts
++@@ -0,0 +1,19 @@
+++import { Logger } from '@nestjs/common';
+++
+++export class IntentParser {
+++  private static readonly logger = new Logger(IntentParser.name);
+++
+++  static parse(llmOutput: string): Record<string, unknown> {
+++    try {
+++      // Sometimes LLMs wrap JSON in markdown code blocks
+++      const cleanOutput = llmOutput
+++        .replace(/^```json\s*/, '')
+++        .replace(/```\s*$/, '')
+++        .trim();
+++      return JSON.parse(cleanOutput) as Record<string, unknown>;
+++    } catch (error) {
+++      this.logger.error('Failed to parse LLM output as JSON', error);
+++      throw new Error('ParseError');
+++    }
+++  }
+++}
++diff --git a/apps/api/src/modules/brain/intent/pipeline/intent.validator.ts b/apps/api/src/modules/brain/intent/pipeline/intent.validator.ts
++new file mode 100644
++index 0000000..710c5bc
++--- /dev/null
+++++ b/apps/api/src/modules/brain/intent/pipeline/intent.validator.ts
++@@ -0,0 +1,44 @@
+++import { Logger } from '@nestjs/common';
+++
+++export class IntentValidator {
+++  private static readonly logger = new Logger(IntentValidator.name);
+++
+++  static validate(
+++    rawJson: Record<string, unknown> | null | undefined,
+++  ): boolean {
+++    if (!rawJson || typeof rawJson !== 'object') {
+++      this.logger.error('Validation failed: Root is not an object');
+++      return false;
+++    }
+++
+++    if (rawJson.version !== 1) {
+++      this.logger.error('Validation failed: Unsupported version');
+++      return false;
+++    }
+++
+++    if (typeof rawJson.intent !== 'string') {
+++      this.logger.error('Validation failed: intent must be a string');
+++      return false;
+++    }
+++
+++    const confidence = rawJson.confidence;
+++    if (typeof confidence !== 'number' || confidence < 0 || confidence > 1) {
+++      this.logger.error(
+++        'Validation failed: confidence must be a number between 0 and 1',
+++      );
+++      return false;
+++    }
+++
+++    if (!rawJson.entities || typeof rawJson.entities !== 'object') {
+++      this.logger.error('Validation failed: entities must be an object');
+++      return false;
+++    }
+++
+++    if (!Array.isArray(rawJson.capabilities)) {
+++      this.logger.error('Validation failed: capabilities must be an array');
+++      return false;
+++    }
+++
+++    return true;
+++  }
+++}
