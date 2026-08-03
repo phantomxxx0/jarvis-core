@@ -15,7 +15,7 @@ export class PlannerService {
 
   async createPlan(intent: Intent, context: ContextPayload): Promise<Plan> {
     void context;
-    this.logger.log(`Creating plan for intent: ${intent.id}`);
+    this.logger.log(`Creating plan for intent: ${intent.id} (${intent.type})`);
 
     // In a real implementation, we'd use an LLM via Reasoner or direct InferenceWorker
     // to decompose the Intent into a DAG of Tasks.
@@ -29,10 +29,10 @@ export class PlannerService {
         {
           id: randomUUID(),
           name: 'Respond to Intent',
-          description: `Execute objective: ${intent.objective}`,
+          description: `Execute objective: ${intent.goal}`,
           capabilityRequired: 'CHAT',
           dependencies: [],
-          inputs: { prompt: intent.objective },
+          inputs: { prompt: intent.goal },
           outputs: { result: 'string' },
           status: 'PENDING',
         },

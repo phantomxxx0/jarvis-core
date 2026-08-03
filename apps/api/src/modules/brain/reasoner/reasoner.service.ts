@@ -1,9 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { randomUUID } from 'crypto';
 
 import { ContextPayload } from '../contracts/context-payload';
-import { Intent } from '../contracts/intent';
 import { Plan } from '../contracts/plan';
 import { Decision } from '../contracts/decision';
 import { BrainEvent } from '../events/enums/brain-event.enum';
@@ -13,19 +11,6 @@ export class ReasonerService {
   private readonly logger = new Logger(ReasonerService.name);
 
   constructor(private readonly eventEmitter: EventEmitter2) {}
-
-  async extractIntent(query: string, context: ContextPayload): Promise<Intent> {
-    void context;
-    this.logger.log('Reasoner extracting intent...');
-
-    return Promise.resolve({
-      id: randomUUID(),
-      category: 'QUERY',
-      objective: query,
-      parameters: {},
-      confidence: 0.9,
-    });
-  }
 
   async evaluatePlan(plan: Plan, context: ContextPayload): Promise<Decision> {
     void context;

@@ -93,7 +93,7 @@ export class BrainService {
     // Batch 10 placeholder: Emit Knowledge Updated
     this.eventEmitter.emit(BrainEvent.KNOWLEDGE_UPDATED, {
       userId,
-      topic: intent.objective,
+      topic: intent.goal,
     });
 
     return finalResponse;

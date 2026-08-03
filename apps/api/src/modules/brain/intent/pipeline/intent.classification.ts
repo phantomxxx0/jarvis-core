@@ -1,3 +1,11 @@
+/**
+ * Pipeline-internal DTO produced by IntentNormalizer.
+ *
+ * Represents the structured output of the LLM intent classification pipeline
+ * before the orchestration boundary assigns a unique id. This type is an
+ * implementation detail of the intent/ subdirectory and must not be exported
+ * beyond IntentService.
+ */
 export interface IntentClassification {
   version: number;
   type: string;
