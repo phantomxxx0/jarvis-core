@@ -56,4 +56,4 @@ import { FriendWorker } from '../inference/workers/friend.worker';
 
   exports: [AIRouter, QdrantProvider, AIService],
 })
-export class AIModule { }
+export class AIModule {}

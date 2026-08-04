@@ -1,22 +1,16 @@
 import { Module } from '@nestjs/common';
-
 import { WorkerRegistryService } from './worker-registry.service';
+import { RegistryModule } from '../../registry/registry.module';
 
 /**
  * Leaf module that owns WorkerRegistryService.
+ * This is provided at the platform level so distinct worker boundaries (Inference, Webhooks, etc.)
+ * can inject `WorkerRegistryService` independently.
  *
- * Extracted from WorkersModule to break the circular dependency:
- *   WorkersModule → InferenceModule → WorkersModule
- *   WorkersModule → EmbeddingModule → WorkersModule
- *
- * As a leaf module it has no upstream imports, so InferenceModule and
- * EmbeddingModule can safely import it without creating a cycle.
- *
- * WorkersModule re-exports this module so all existing consumers
- * (BrainModule, AIModule, MemoriesModule) continue to receive
- * WorkerRegistryService without any changes to their wiring.
+ * It does not have any deep dependencies on BrainModule, Planner, etc.
  */
 @Module({
+  imports: [RegistryModule],
   providers: [WorkerRegistryService],
   exports: [WorkerRegistryService],
 })

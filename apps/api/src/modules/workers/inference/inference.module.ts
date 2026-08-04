@@ -14,11 +14,7 @@ import { InferenceWorker } from './inference.worker';
  * Module responsible for AI inference capabilities and provider integrations.
  */
 @Module({
-  imports: [
-    HttpModule,
-    WorkerRegistryModule,
-    OllamaModule,
-  ],
+  imports: [HttpModule, WorkerRegistryModule, OllamaModule],
   providers: [
     ProviderRegistryService,
     OllamaProvider,
@@ -34,7 +30,7 @@ export class InferenceModule implements OnModuleInit {
     private readonly inferenceService: InferenceService,
     private readonly workerRegistry: WorkerRegistryService,
     private readonly inferenceWorker: InferenceWorker,
-  ) { }
+  ) {}
 
   async onModuleInit(): Promise<void> {
     this.providerRegistry.registerProvider(this.ollamaProvider);

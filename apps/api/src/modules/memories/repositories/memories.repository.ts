@@ -46,6 +46,17 @@ export class MemoriesRepository {
     return memory;
   }
 
+  async findUnconsolidated(limit = 50) {
+    return this.database.db
+      .select()
+      .from(memories)
+      .where(
+        and(eq(memories.status, 'ACTIVE'), eq(memories.type, 'CONVERSATIONAL')),
+      )
+      .orderBy(memories.createdAt)
+      .limit(limit);
+  }
+
   async findByUserId(userId: string) {
     return this.database.db
       .select()

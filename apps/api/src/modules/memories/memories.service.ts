@@ -35,6 +35,10 @@ export class MemoriesService {
     return memory;
   }
 
+  findUnconsolidated(limit = 50) {
+    return this.memoriesRepository.findUnconsolidated(limit);
+  }
+
   findByUserId(userId: string) {
     return this.memoriesRepository.findByUserId(userId);
   }

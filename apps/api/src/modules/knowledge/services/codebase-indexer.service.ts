@@ -7,10 +7,20 @@ import { MemoriesService } from '../../memories/memories.service';
 export class CodebaseIndexerService {
   private readonly logger = new Logger(CodebaseIndexerService.name);
 
-  constructor(private readonly memoriesService: MemoriesService) { }
+  constructor(private readonly memoriesService: MemoriesService) {}
 
-  async indexRepository(userId: string, targetDir = process.cwd()): Promise<{ indexedFilesCount: number; scannedFiles: number; sampleFiles: string[]; lastError?: string }> {
-    this.logger.log(`[Indexer] Starting indexRepository for user ${userId}. targetDir=${targetDir}`);
+  async indexRepository(
+    userId: string,
+    targetDir = process.cwd(),
+  ): Promise<{
+    indexedFilesCount: number;
+    scannedFiles: number;
+    sampleFiles: string[];
+    lastError?: string;
+  }> {
+    this.logger.log(
+      `[Indexer] Starting indexRepository for user ${userId}. targetDir=${targetDir}`,
+    );
 
     let searchDir = targetDir;
     for (let i = 0; i < 4; i++) {
@@ -22,7 +32,15 @@ export class CodebaseIndexerService {
       }
     }
 
-    const files = await this.walkDir(searchDir, ['node_modules', 'dist', '.git', '.pnpm', 'coverage', '.next', 'build']);
+    const files = await this.walkDir(searchDir, [
+      'node_modules',
+      'dist',
+      '.git',
+      '.pnpm',
+      'coverage',
+      '.next',
+      'build',
+    ]);
     this.logger.log(`[Indexer] Scanned ${files.length} files total.`);
 
     let indexedCount = 0;
@@ -35,7 +53,17 @@ export class CodebaseIndexerService {
         const ext = path.extname(filePath).toLowerCase();
         const basename = path.basename(filePath);
 
-        const allowed = ['.ts', '.tsx', '.js', '.jsx', '.json', '.md', '.yml', '.yaml'].includes(ext) || basename.includes('.env');
+        const allowed =
+          [
+            '.ts',
+            '.tsx',
+            '.js',
+            '.jsx',
+            '.json',
+            '.md',
+            '.yml',
+            '.yaml',
+          ].includes(ext) || basename.includes('.env');
         if (!allowed) {
           continue;
         }
@@ -57,19 +85,29 @@ export class CodebaseIndexerService {
           type: 'SEMANTIC',
           origin: 'CODEBASE_INDEX',
           content: `File Path: ${relPath}\n\n\`\`\`${ext.replace('.', '') || 'text'}\n${content}\n\`\`\``,
-        } as any);
+        });
 
         indexedCount++;
-      } catch (err: any) {
-        lastError = err.message || String(err);
-        if (err.detail) lastError += ` | Detail: ${err.detail}`;
-        if (err.code) lastError += ` | Code: ${err.code}`;
+      } catch (err: unknown) {
+        const errorRecord = err as Record<string, unknown>;
+        lastError = (errorRecord.message as string) || String(err);
+        if (errorRecord.detail)
+          lastError += ` | Detail: ${errorRecord.detail as string}`;
+        if (errorRecord.code)
+          lastError += ` | Code: ${errorRecord.code as string}`;
         this.logger.error(`[Indexer] Error indexing ${filePath}: ${lastError}`);
       }
     }
 
-    this.logger.log(`[Indexer] Completed. Successfully indexed ${indexedCount} out of ${files.length} files.`);
-    return { indexedFilesCount: indexedCount, scannedFiles: files.length, sampleFiles, lastError };
+    this.logger.log(
+      `[Indexer] Completed. Successfully indexed ${indexedCount} out of ${files.length} files.`,
+    );
+    return {
+      indexedFilesCount: indexedCount,
+      scannedFiles: files.length,
+      sampleFiles,
+      lastError,
+    };
   }
 
   private async walkDir(dir: string, ignoreDirs: string[]): Promise<string[]> {
@@ -87,8 +125,9 @@ export class CodebaseIndexerService {
           results.push(res);
         }
       }
-    } catch (e) {
-      this.logger.warn(`[Indexer] Error walking ${dir}: ${e.message}`);
+    } catch (e: unknown) {
+      const err = e as Error;
+      this.logger.warn(`[Indexer] Error walking ${dir}: ${err.message}`);
     }
     return results;
   }

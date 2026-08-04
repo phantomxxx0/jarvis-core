@@ -16,6 +16,11 @@ import { MemoriesModule } from './modules/memories/memories.module';
 import { UsersModule } from './modules/users/users.module';
 
 import { BrainModule } from './modules/brain/brain.module';
+import { PersonalIntelligenceModule } from './modules/personal-intelligence/personal-intelligence.module';
+import { WorldModelModule } from './modules/world-model/world-model.module';
+import { ObservationModule } from './modules/observation/observation.module';
+import { RuntimeModule } from './modules/runtime/runtime.module';
+import { ClusterModule } from './modules/cluster/cluster.module';
 
 @Module({
   imports: [
@@ -53,6 +58,11 @@ import { BrainModule } from './modules/brain/brain.module';
     AIModule,
 
     BrainModule,
+    PersonalIntelligenceModule,
+    WorldModelModule,
+    ObservationModule,
+    RuntimeModule,
+    ClusterModule,
   ],
   providers: [
     {

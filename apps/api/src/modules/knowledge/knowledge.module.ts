@@ -78,4 +78,4 @@ import { NameRule } from './rules/name.rule';
     RuleRegistry,
   ],
 })
-export class KnowledgeModule { }
+export class KnowledgeModule {}

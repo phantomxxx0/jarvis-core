@@ -1,30 +1,81 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { randomUUID } from 'crypto';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { BrainPlanStep } from '../planner/contracts/brain-plan-step';
+import { ValidatedBrainPlan } from '../reasoner/reasoner.service';
 
-import { Plan } from '../contracts/plan';
-import { ExecutionPlan } from '../contracts/execution-plan';
-import { BrainEvent } from '../events/enums/brain-event.enum';
+export interface ExecutionStage {
+  steps: BrainPlanStep[];
+}
+
+export interface ExecutionGraph {
+  stages: ExecutionStage[];
+}
 
 @Injectable()
 export class ExecutionBuilderService {
   private readonly logger = new Logger(ExecutionBuilderService.name);
 
-  constructor(private readonly eventEmitter: EventEmitter2) {}
+  public buildExecutionGraph(plan: ValidatedBrainPlan): ExecutionGraph {
+    this.logger.log(`Building ExecutionGraph for plan ${plan.id}`);
 
-  build(plan: Plan): ExecutionPlan {
-    this.logger.log(`Building ExecutionPlan from Plan: ${plan.id}`);
+    const graph: ExecutionGraph = { stages: [] };
+    const remainingSteps = new Map<string, BrainPlanStep>();
+    const completedStepIds = new Set<string>();
 
-    const executionPlan: ExecutionPlan = {
-      id: randomUUID(),
-      planId: plan.id,
-      status: 'PENDING',
-      pendingTasks: [...plan.tasks],
-      completedTasks: [],
-    };
+    for (const step of plan.steps) {
+      remainingSteps.set(step.id, step);
+    }
 
-    this.eventEmitter.emit(BrainEvent.EXECUTION_PLAN_BUILT, { executionPlan });
+    while (remainingSteps.size > 0) {
+      const currentStageSteps: BrainPlanStep[] = [];
 
-    return executionPlan;
+      for (const step of remainingSteps.values()) {
+        const dependencies = step.dependencies || [];
+
+        // Ensure dependencies actually exist in the plan
+        for (const depId of dependencies) {
+          if (!plan.steps.some((s) => s.id === depId)) {
+            this.logger.error(
+              `Unresolved dependency: Step ${step.id} depends on ${depId} which does not exist in the plan.`,
+            );
+            throw new BadRequestException(
+              `Unresolved dependency: Step ${step.id} depends on ${depId} which does not exist in the plan.`,
+            );
+          }
+        }
+
+        // Check if all dependencies are satisfied
+        const allDependenciesSatisfied = dependencies.every((depId) =>
+          completedStepIds.has(depId),
+        );
+
+        if (allDependenciesSatisfied) {
+          currentStageSteps.push(step);
+        }
+      }
+
+      if (currentStageSteps.length === 0) {
+        // If there are remaining steps but we couldn't resolve any, there's a circular dependency
+        this.logger.error(
+          `Circular dependency detected in plan ${plan.id}. Could not resolve execution graph.`,
+        );
+        throw new BadRequestException(
+          `Circular dependency detected in plan ${plan.id}. Could not resolve execution graph.`,
+        );
+      }
+
+      // Add resolved steps to the current stage
+      graph.stages.push({ steps: currentStageSteps });
+
+      // Remove from remaining and add to completed
+      for (const step of currentStageSteps) {
+        remainingSteps.delete(step.id);
+        completedStepIds.add(step.id);
+      }
+    }
+
+    this.logger.log(
+      `Built ExecutionGraph with ${graph.stages.length} stages for plan ${plan.id}`,
+    );
+    return graph;
   }
 }

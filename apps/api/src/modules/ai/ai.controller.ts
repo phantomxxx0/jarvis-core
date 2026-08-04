@@ -11,7 +11,7 @@ import { ChatDto } from './dto/chat.dto';
 @Controller('ai')
 @UseGuards(JwtAuthGuard)
 export class AIController {
-  constructor(private readonly brainService: BrainService) { }
+  constructor(private readonly brainService: BrainService) {}
 
   @Post('chat')
   async chat(@CurrentUser() user: JwtPayload, @Body() dto: ChatDto) {
@@ -43,17 +43,24 @@ export class AIController {
     try {
       sendEvent('status', { message: 'Initializing cognitive pipeline...' });
 
-      const latestMessage = dto.messages[dto.messages.length - 1]?.content || '';
+      const latestMessage =
+        dto.messages[dto.messages.length - 1]?.content || '';
 
       sendEvent('status', { message: 'Extracting intent and planning...' });
-      const answer = await this.brainService.think(latestMessage, user.id, (eventType: string, eventData: any) => {
-        sendEvent(eventType, eventData);
-      });
+      const answer = await this.brainService.think(
+        latestMessage,
+        user.id,
+        (eventType: string, eventData: any) => {
+          sendEvent(eventType, eventData);
+        },
+      );
 
       sendEvent('token', { content: answer });
       sendEvent('complete', { success: true });
     } catch (error) {
-      sendEvent('error', { message: error instanceof Error ? error.message : String(error) });
+      sendEvent('error', {
+        message: error instanceof Error ? error.message : String(error),
+      });
     } finally {
       res.end();
     }

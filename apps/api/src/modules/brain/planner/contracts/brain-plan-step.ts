@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { BrainPlanStatus } from '../enums/brain-plan-status.enum';
 
 /**
  * Zod schema for runtime validation of LLM-generated plan steps.
@@ -13,11 +12,16 @@ export const BrainPlanStepSchema: z.ZodType<any> = z.lazy(() =>
     description: z.string().optional(),
     action: z.unknown(), // Accommodates the TAction generic
     arguments: z.unknown().optional(), // Accommodates the TArgs generic
-    status: z.nativeEnum(BrainPlanStatus).default(BrainPlanStatus.DRAFT),
+    capabilityRequired: z.string(),
+    output: z.unknown().optional(),
+    error: z.string().optional(),
+    status: z
+      .enum(['PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'SKIPPED'])
+      .default('PENDING'),
     dependencies: z.array(z.string().uuid()).optional(),
     condition: z.string().optional(),
     subSteps: z.array(BrainPlanStepSchema).optional(),
-  })
+  }),
 );
 
 /**
@@ -30,8 +34,12 @@ export interface BrainPlanStep<TAction = unknown, TArgs = unknown> {
   readonly name: string;
   readonly description?: string;
   readonly action: TAction;
-  readonly arguments?: TArgs;
-  readonly status: BrainPlanStatus;
+  arguments?: TArgs;
+
+  capabilityRequired: string;
+  output?: unknown;
+  error?: string;
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'SKIPPED';
 
   /** IDs of other steps that must complete before this one can begin (enables sequential/parallel graphs). */
   readonly dependencies?: ReadonlyArray<string>;

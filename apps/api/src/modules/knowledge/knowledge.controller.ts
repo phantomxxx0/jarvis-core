@@ -5,12 +5,15 @@ import { CodebaseIndexerService } from './services/codebase-indexer.service';
 @Controller('knowledge')
 @UseGuards(JwtAuthGuard)
 export class KnowledgeController {
-  constructor(private readonly indexerService: CodebaseIndexerService) { }
+  constructor(private readonly indexerService: CodebaseIndexerService) {}
 
   @Post('index')
-  async indexCodebase(@Req() req: any) {
+  async indexCodebase(@Req() req: unknown) {
+    const request = req as Record<string, unknown>;
+    const user = request.user as Record<string, unknown> | undefined;
+
     // Extract the authenticated user's valid UUID from JWT payload
-    const userId = req.user?.id || req.user?.sub;
+    const userId = (user?.id || user?.sub) as string | undefined;
     if (!userId) {
       throw new Error('Unauthorized: User ID not found in token context.');
     }

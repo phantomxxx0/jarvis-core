@@ -1,0 +1,8 @@
+export enum QueueState {
+  PENDING = 'PENDING',
+  RUNNING = 'RUNNING',
+  RETRYING = 'RETRYING',
+  FAILED = 'FAILED',
+  COMPLETED = 'COMPLETED',
+  DLQ = 'DLQ',
+}
