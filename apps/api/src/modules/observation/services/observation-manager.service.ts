@@ -5,7 +5,8 @@ import { IdempotencyService } from './idempotency.service';
 import { EventEnvelope } from '../contracts/event-envelope.interface';
 
 export interface IngestObservationDto {
-  userId: string;
+  userId?: string | null;
+  scope?: 'USER' | 'SYSTEM';
   source: string;
   type: string;
   payload: Record<string, unknown>;
@@ -46,9 +47,13 @@ export class ObservationManagerService {
       return;
     }
 
+    // Determine scope (fallback to USER if user_id is provided, otherwise SYSTEM)
+    const observationScope = dto.scope ?? (dto.userId ? 'USER' : 'SYSTEM');
+
     // Create the append-only observation
     const observation = await this.observationRepository.create({
-      userId: dto.userId,
+      userId: dto.userId ?? null,
+      observationScope,
       source: dto.source,
       type: dto.type,
       payload: dto.payload,

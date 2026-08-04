@@ -9,6 +9,10 @@ import { RuntimeSnapshotService } from './services/runtime-snapshot.service';
 import { RuntimeController } from './controllers/runtime.controller';
 import { RuntimeObservationListener } from './listeners/runtime-observation.listener';
 
+import { CapabilityRegistryService } from './services/capability-registry.service';
+import { CapabilityRegistryListener } from './listeners/capability-registry.listener';
+import { TaskPlannerService } from './services/task-planner.service';
+
 @Module({
   imports: [ScheduleModule.forRoot(), RegistryModule, ObservationModule],
   controllers: [RuntimeController],
@@ -18,11 +22,16 @@ import { RuntimeObservationListener } from './listeners/runtime-observation.list
     HealthMonitorService,
     RuntimeSnapshotService,
     RuntimeObservationListener,
+    CapabilityRegistryService,
+    CapabilityRegistryListener,
+    TaskPlannerService,
   ],
   exports: [
     RuntimeRegistryService,
     MetricsCollectorService,
     RuntimeSnapshotService,
+    CapabilityRegistryService,
+    TaskPlannerService,
   ],
 })
 export class RuntimeModule {}

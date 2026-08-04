@@ -43,6 +43,13 @@
       "when": 1785575924074,
       "tag": "0005_fixed_prism",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785863346224,
+      "tag": "0006_unknown_juggernaut",
+      "breakpoints": true
     }
   ]
 }

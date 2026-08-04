@@ -11,8 +11,8 @@ import { users } from './users';
 export const userObservations = pgTable('user_observations', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id')
-    .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
+  observationScope: text('observation_scope').notNull().default('USER'),
   source: text('source').notNull(),
   type: text('type').notNull(),
   confidence: integer('confidence').default(50).notNull(),

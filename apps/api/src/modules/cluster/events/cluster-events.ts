@@ -1,9 +1,19 @@
 import { NodeIdentity } from '../contracts/cluster/node-identity.interface';
+import { ClusterManifest } from '../contracts/cluster/cluster-manifest.interface';
 
 export class NodeRegisteredEvent {
   static readonly EVENT_NAME = 'cluster.node.registered';
   constructor(
     public readonly identity: NodeIdentity,
+    public readonly manifest: ClusterManifest,
+    public readonly timestamp: Date,
+  ) {}
+}
+
+export class NodeHeartbeatEvent {
+  static readonly EVENT_NAME = 'cluster.node.heartbeat';
+  constructor(
+    public readonly nodeId: string,
     public readonly timestamp: Date,
   ) {}
 }

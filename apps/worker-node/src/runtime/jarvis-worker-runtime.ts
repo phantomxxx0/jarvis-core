@@ -12,6 +12,7 @@ export class JarvisWorkerRuntime {
 
   constructor(private readonly executor: SandboxExecutor) {
     this.nodeId = randomUUID(); // Ephemeral ID for this session
+    this.executor.setWorkerId(this.nodeId);
     this.clusterUrl =
       process.env.CORE_SERVER_URL || "ws://localhost:4000/cluster";
 
@@ -80,6 +81,24 @@ export class JarvisWorkerRuntime {
       clusterVersion: "1.0",
       minimumWorkerVersion: "1.0",
       supportedProtocols: ["socket.io"],
+      worker: {
+        id: this.nodeId,
+        hostname: os.hostname(),
+        platform: os.platform(),
+        arch: os.arch(),
+        version: "1.0.0", // from package.json or hardcoded for now
+        startedAt: new Date().toISOString(),
+      },
+      capabilities: this.executor.getCapabilities().map(c => ({
+        id: c.id,
+        name: c.name,
+        version: c.version,
+        description: c.description,
+        category: c.category,
+        platform: c.platform || ["all"],
+        inputSchema: c.inputSchema,
+        outputSchema: c.outputSchema,
+      })),
     };
 
     this.socket.emit(

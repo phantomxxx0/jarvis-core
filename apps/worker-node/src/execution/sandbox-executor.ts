@@ -1,13 +1,24 @@
 import { PluginRegistry } from "./plugin-registry";
 import { TaskEnvelope, ResultEnvelope } from "../sdk/envelopes";
+import { WorkerCapability } from "../sdk/worker-capability";
 
 export class SandboxExecutor {
+  private workerId?: string;
+
   constructor(private readonly registry: PluginRegistry) {}
 
-  async executeTask(envelope: TaskEnvelope): Promise<ResultEnvelope> {
-    const plugin = this.registry.getPlugin(envelope.capabilityId);
+  setWorkerId(workerId: string): void {
+    this.workerId = workerId;
+  }
 
-    if (!plugin) {
+  getCapabilities(): WorkerCapability[] {
+    return this.registry.getAll();
+  }
+
+  async executeTask(envelope: TaskEnvelope): Promise<ResultEnvelope> {
+    const capability = this.registry.getCapability(envelope.capabilityId);
+
+    if (!capability) {
       return {
         traceId: envelope.traceId,
         executionId: envelope.executionId,
@@ -22,10 +33,11 @@ export class SandboxExecutor {
       console.log(`Executing capability ${envelope.capabilityId}`);
       // Robust try/catch implementation for this batch
       // Future iteration will wrap this in a worker_thread
-      const result = await plugin.execute(envelope.payload, {
+      const result = await capability.execute(envelope.payload, {
         traceId: envelope.traceId,
         executionId: envelope.executionId,
         correlationId: envelope.correlationId,
+        workerId: this.workerId,
       });
 
       console.log(`Execution successful`);

@@ -1,17 +1,20 @@
-import { CapabilityPlugin } from "../sdk/capability-plugin";
+import { WorkerCapability } from "../sdk/worker-capability";
 
 export class PluginRegistry {
-  private plugins = new Map<string, CapabilityPlugin>();
+  private capabilities = new Map<string, WorkerCapability>();
 
-  register(plugin: CapabilityPlugin): void {
-    this.plugins.set(plugin.id, plugin);
+  register(capability: WorkerCapability): void {
+    if (this.capabilities.has(capability.id)) {
+      throw new Error(`Duplicate capability ID registered: ${capability.id}`);
+    }
+    this.capabilities.set(capability.id, capability);
   }
 
-  getPlugin(id: string): CapabilityPlugin | undefined {
-    return this.plugins.get(id);
+  getCapability(id: string): WorkerCapability | undefined {
+    return this.capabilities.get(id);
   }
 
-  getAll(): CapabilityPlugin[] {
-    return Array.from(this.plugins.values());
+  getAll(): WorkerCapability[] {
+    return Array.from(this.capabilities.values());
   }
 }

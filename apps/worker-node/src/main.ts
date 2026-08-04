@@ -1,16 +1,14 @@
 import { PluginRegistry } from "./execution/plugin-registry";
 import { SandboxExecutor } from "./execution/sandbox-executor";
 import { JarvisWorkerRuntime } from "./runtime/jarvis-worker-runtime";
-import { EchoPlugin } from "./plugins/echo-plugin";
+import { PluginLoader } from "./execution/plugin-loader";
 
 async function bootstrap() {
   console.log("Bootstrapping Worker...");
 
   const registry = new PluginRegistry();
-
-  const echoPlugin = new EchoPlugin();
-  registry.register(echoPlugin);
-  console.log("Registered plugin: echo");
+  const loader = new PluginLoader(registry);
+  await loader.loadAll();
 
   const executor = new SandboxExecutor(registry);
   const runtime = new JarvisWorkerRuntime(executor);

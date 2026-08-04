@@ -14,6 +14,7 @@ import {
   NodeOfflineEvent,
   LeaseExpiredEvent,
   TaskExpiredEvent,
+  NodeHeartbeatEvent,
 } from '../events/cluster-events';
 import { randomUUID } from 'crypto';
 
@@ -54,7 +55,7 @@ export class ClusterManagerService {
 
     this.eventEmitter.emit(
       NodeRegisteredEvent.EVENT_NAME,
-      new NodeRegisteredEvent(identity, new Date()),
+      new NodeRegisteredEvent(identity, manifest, new Date()),
     );
 
     this.logger.log(
@@ -80,6 +81,11 @@ export class ClusterManagerService {
       expiresAt: new Date(Date.now() + this.NODE_LEASE_TTL_MS),
     };
     this.nodeLeases.set(nodeId, lease);
+
+    this.eventEmitter.emit(
+      NodeHeartbeatEvent.EVENT_NAME,
+      new NodeHeartbeatEvent(nodeId, new Date()),
+    );
   }
 
   public removeNodeLease(nodeId: string): void {

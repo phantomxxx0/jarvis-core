@@ -26,7 +26,7 @@ export class RuntimeObservationListener {
     // We do NOT block, we let this process in the background.
     await this.observationManager
       .ingestObservation({
-        userId: 'system',
+        scope: 'SYSTEM',
         source: 'RUNTIME_MONITOR',
         type: 'PROVIDER_STATE_CHANGE',
         payload: {

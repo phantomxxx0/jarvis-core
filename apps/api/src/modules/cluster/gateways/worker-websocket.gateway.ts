@@ -1,11 +1,11 @@
 import {
   WebSocketGateway,
   WebSocketServer,
+  SubscribeMessage,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  SubscribeMessage,
-  MessageBody,
   ConnectedSocket,
+  MessageBody,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Logger, Inject, forwardRef } from '@nestjs/common';
@@ -15,6 +15,7 @@ import { WorkerTransportGateway } from '../interfaces/worker-transport-gateway.i
 import { NodeIdentity } from '../contracts/cluster/node-identity.interface';
 import { ClusterManifest } from '../contracts/cluster/cluster-manifest.interface';
 import { NodeOfflineEvent } from '../events/cluster-events';
+import { TaskPlannerService } from '../../runtime/services/task-planner.service';
 import type {
   TaskEnvelope,
   ResultEnvelope,
@@ -23,7 +24,7 @@ import type {
 } from '../contracts/execution/envelopes.interface';
 
 @WebSocketGateway({
-  namespace: 'cluster',
+  namespace: '/cluster',
   cors: { origin: '*' },
 })
 export class WorkerWebSocketGateway
@@ -42,6 +43,7 @@ export class WorkerWebSocketGateway
     @Inject(forwardRef(() => ClusterManagerService))
     private readonly clusterManager: ClusterManagerService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly taskPlanner: TaskPlannerService,
   ) { }
 
   async handleConnection(client: Socket) {
@@ -79,15 +81,20 @@ export class WorkerWebSocketGateway
 
     // Diagnostic runtime validation dispatch
     setTimeout(() => {
-      this.logger.log('Dispatching task demo-task');
-      this.dispatchTask(identity.nodeId, {
-        taskId: 'demo-task',
-        capabilityId: 'echo',
-        payload: { text: 'Hello Jarvis' },
-        traceId: 'trace-1',
-        correlationId: 'corr-1',
-        executionId: 'exec-1'
-      }).catch(err => this.logger.error(err));
+      try {
+        const plan = this.taskPlanner.planTask({ capabilityId: 'system.info', input: {} });
+        this.logger.log(`Dispatching task system-info to ${plan.workerId}`);
+        this.dispatchTask(plan.workerId, {
+          taskId: 'demo-system-info',
+          capabilityId: plan.capabilityId,
+          payload: {},
+          traceId: 'trace-1',
+          correlationId: 'corr-1',
+          executionId: 'exec-1'
+        }).catch(err => this.logger.error(err));
+      } catch (err) {
+        this.logger.error(`Failed to plan diagnostic task: ${err instanceof Error ? err.message : String(err)}`);
+      }
     }, 2000);
 
     return { status: 'REGISTERED', sessionId: session.sessionId };
