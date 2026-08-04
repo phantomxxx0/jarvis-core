@@ -27,8 +27,7 @@ import type {
   cors: { origin: '*' },
 })
 export class WorkerWebSocketGateway
-  implements OnGatewayConnection, OnGatewayDisconnect, WorkerTransportGateway
-{
+  implements OnGatewayConnection, OnGatewayDisconnect, WorkerTransportGateway {
   @WebSocketServer()
   server: Server;
 
@@ -43,7 +42,7 @@ export class WorkerWebSocketGateway
     @Inject(forwardRef(() => ClusterManagerService))
     private readonly clusterManager: ClusterManagerService,
     private readonly eventEmitter: EventEmitter2,
-  ) {}
+  ) { }
 
   async handleConnection(client: Socket) {
     this.logger.log(
@@ -77,6 +76,19 @@ export class WorkerWebSocketGateway
     this.socketNodes.set(client.id, identity.nodeId);
 
     this.connect(identity.nodeId);
+
+    // Diagnostic runtime validation dispatch
+    setTimeout(() => {
+      this.logger.log('Dispatching task demo-task');
+      this.dispatchTask(identity.nodeId, {
+        taskId: 'demo-task',
+        capabilityId: 'echo',
+        payload: { text: 'Hello Jarvis' },
+        traceId: 'trace-1',
+        correlationId: 'corr-1',
+        executionId: 'exec-1'
+      }).catch(err => this.logger.error(err));
+    }, 2000);
 
     return { status: 'REGISTERED', sessionId: session.sessionId };
   }
@@ -130,7 +142,7 @@ export class WorkerWebSocketGateway
 
   onHeartbeat(nodeId: string, frame: HeartbeatFrame): void {
     try {
-      this.logger.debug(
+      this.logger.log(
         `Heartbeat from ${nodeId} at ${String(frame.timestamp)}`,
       );
       this.clusterManager.renewNodeLease(nodeId);
@@ -168,6 +180,8 @@ export class WorkerWebSocketGateway
   }
 
   onResult(nodeId: string, result: ResultEnvelope): void {
+    this.logger.log('Received ResultEnvelope');
+    this.logger.log(`Status ${result.status}`);
     this.eventEmitter.emit(`task.result.${result.correlationId}`, result);
   }
 }

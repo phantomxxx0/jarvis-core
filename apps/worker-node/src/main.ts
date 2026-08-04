@@ -1,15 +1,16 @@
 import { PluginRegistry } from "./execution/plugin-registry";
 import { SandboxExecutor } from "./execution/sandbox-executor";
 import { JarvisWorkerRuntime } from "./runtime/jarvis-worker-runtime";
+import { EchoPlugin } from "./plugins/echo-plugin";
 
 async function bootstrap() {
-  console.log("Bootstrapping Jarvis Worker Node...");
+  console.log("Bootstrapping Worker...");
 
   const registry = new PluginRegistry();
 
-  // Future: dynamic plugin loading could happen here.
-  // Example: registry.register(new DummyPlugin());
-  await Promise.resolve();
+  const echoPlugin = new EchoPlugin();
+  registry.register(echoPlugin);
+  console.log("Registered plugin: echo");
 
   const executor = new SandboxExecutor(registry);
   const runtime = new JarvisWorkerRuntime(executor);

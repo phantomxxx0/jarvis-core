@@ -19,6 +19,7 @@ export class SandboxExecutor {
     }
 
     try {
+      console.log(`Executing capability ${envelope.capabilityId}`);
       // Robust try/catch implementation for this batch
       // Future iteration will wrap this in a worker_thread
       const result = await plugin.execute(envelope.payload, {
@@ -26,6 +27,8 @@ export class SandboxExecutor {
         executionId: envelope.executionId,
         correlationId: envelope.correlationId,
       });
+
+      console.log(`Execution successful`);
 
       return {
         traceId: envelope.traceId,
