@@ -74,6 +74,7 @@ export class PlannerService {
         description: 'Run system diagnostics',
         action: 'system_diagnostic',
         arguments: {},
+        executionType: 'capability',
         capabilityRequired: 'system_diagnostic',
         status: 'PENDING',
         dependencies: [],
@@ -88,6 +89,7 @@ export class PlannerService {
         description: 'Read package.json file',
         action: 'read_project_file',
         arguments: { filePath: 'package.json', path: 'package.json' }, // <-- Supports both parameter conventions
+        executionType: 'capability',
         capabilityRequired: 'read_project_file',
         status: 'PENDING',
         dependencies:
@@ -250,11 +252,18 @@ export class PlannerService {
       description:
         (intent.primaryGoal as string) || 'Direct response generation',
       action: 'direct_llm_response',
-      arguments: intent.rawParameters || {},
-      capabilityRequired: 'direct_llm_response',
+      arguments: {
+        prompt: intent.primaryGoal,
+      },
+      executionType: 'internal',
       status: 'PENDING',
       dependencies: [],
     };
+
+    this.logger.debug({
+      prompt: intent.primaryGoal,
+      stepArguments: step.arguments,
+    });
 
     return {
       id: planId,
@@ -350,17 +359,22 @@ ${toolsDescription}
       throw new Error('LLM output missing "steps" array');
     }
 
-    return (parsed.steps as Array<Record<string, unknown>>).map((s) => ({
-      id: s.id || crypto.randomUUID(),
-      planId,
-      name: s.name || s.action || 'Task',
-      description: s.description || '',
-      action: s.action || 'direct_llm_response',
-      arguments: s.arguments || s.inputs || {},
-      capabilityRequired:
-        s.action || s.capabilityRequired || 'direct_llm_response',
-      status: 'PENDING',
-      dependencies: s.dependencies || [],
-    }));
+    return (parsed.steps as Array<Record<string, unknown>>).map((s) => {
+      const isInternal = s.action === 'direct_llm_response';
+      return {
+        id: s.id || crypto.randomUUID(),
+        planId,
+        name: s.name || s.action || 'Task',
+        description: s.description || '',
+        action: s.action || 'direct_llm_response',
+        executionType: isInternal ? 'internal' : 'capability',
+        arguments: s.arguments || s.inputs || {},
+        capabilityRequired: isInternal
+          ? undefined
+          : s.action || s.capabilityRequired || 'direct_llm_response',
+        status: 'PENDING',
+        dependencies: s.dependencies || [],
+      };
+    });
   }
 }

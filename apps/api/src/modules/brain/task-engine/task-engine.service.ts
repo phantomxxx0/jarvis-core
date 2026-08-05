@@ -48,20 +48,32 @@ export class TaskEngineService {
 
   private async executeStep(step: BrainPlanStep): Promise<void> {
     this.logger.log(
-      `[Executing Step] ID: ${step.id} | Capability: ${step.capabilityRequired}`,
+      `[Executing Step] ID: ${step.id} | Type: ${step.executionType} | Capability: ${step.capabilityRequired || 'N/A'}`,
     );
 
     try {
       step.status = 'RUNNING';
 
-      const capability = step.capabilityRequired;
-      const result = await this.toolRegistry.executeCapability(
-        capability,
-        step.arguments,
-      );
+      if (step.executionType === 'internal') {
+        if (step.action === 'direct_llm_response') {
+          const args = (step.arguments || {}) as Record<string, unknown>;
+          step.output = { answer: args.answer || args.response || args.message || 'I have completed your request.' };
+          step.status = 'COMPLETED';
+        } else {
+          throw new Error(`Unknown internal action: ${step.action as string}`);
+        }
+      } else {
+        const capability = step.capabilityRequired;
+        if (!capability) throw new Error('Capability required but not provided');
+        
+        const result = await this.toolRegistry.executeCapability(
+          capability,
+          step.arguments,
+        );
 
-      step.output = result;
-      step.status = 'COMPLETED';
+        step.output = result;
+        step.status = 'COMPLETED';
+      }
 
       this.logger.log(`[Completed Step] ID: ${step.id}`);
     } catch (error) {

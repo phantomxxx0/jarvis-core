@@ -34,8 +34,9 @@ export class ExecutionSchedulerService {
 
       try {
         // Execute steps in parallel
+        // FIX: Pass the root `plan` down so we can sync results back
         await Promise.all(
-          stage.steps.map((step) => this.scheduleStep(step, context)),
+          stage.steps.map((step) => this.scheduleStep(step, plan, context)),
         );
       } catch {
         this.logger.error(
@@ -54,12 +55,14 @@ export class ExecutionSchedulerService {
     this.logger.log(`Execution scheduled & completed for plan: ${plan.id}`);
   }
 
+  // FIX: Accept `plan: ValidatedBrainPlan` as the second argument
   private async scheduleStep(
     step: BrainPlanStep,
+    plan: ValidatedBrainPlan, 
     context: unknown,
   ): Promise<void> {
     this.logger.log(
-      `[Scheduling Step] ID: ${step.id} | Capability: ${step.capabilityRequired}`,
+      `[Scheduling Step] ID: ${step.id} | Type: ${step.executionType} | Capability: ${step.capabilityRequired || 'N/A'}`,
     );
 
     try {
@@ -69,11 +72,28 @@ export class ExecutionSchedulerService {
         context,
         2, // maxRetries
       );
+      
       step.output = output;
       step.status = 'COMPLETED';
+
+      // FIX: Sync the output and status back to the original plan array
+      const originalStep = plan.steps.find((s) => s.id === step.id);
+      if (originalStep) {
+        originalStep.status = 'COMPLETED';
+        originalStep.output = output;
+      }
+
     } catch (error) {
       step.status = 'FAILED';
       step.error = error instanceof Error ? error.message : String(error);
+      
+      // FIX: Sync the error and failure status back to the original plan array
+      const originalStep = plan.steps.find((s) => s.id === step.id);
+      if (originalStep) {
+        originalStep.status = 'FAILED';
+        originalStep.error = step.error;
+      }
+
       throw error;
     }
   }

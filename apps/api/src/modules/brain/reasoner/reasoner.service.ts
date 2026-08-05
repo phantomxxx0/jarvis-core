@@ -31,7 +31,7 @@ export class ReasonerService {
 
     // 1. Iterate through plan.steps and validate that every capabilityRequired exists and is healthy
     const validatedSteps = plan.steps.map((step) => {
-      if (step.capabilityRequired) {
+      if (step.executionType === 'capability' && step.capabilityRequired) {
         const capability = this.toolRegistry
           .getAvailableTools()
           .find((t) => t.name === step.capabilityRequired);

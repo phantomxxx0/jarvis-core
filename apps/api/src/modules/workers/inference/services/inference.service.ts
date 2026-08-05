@@ -41,8 +41,11 @@ export class InferenceService {
     request: InferenceRequest,
     context?: InferenceContext,
   ): Promise<InferenceResponse> {
+    this.logger.debug(request);
     const provider = this.providerRegistry.resolveProvider(providerType);
-    return provider.infer(request, context);
+    const result = await provider.infer(request, context);
+    this.logger.debug(result);
+    return result;
   }
 
   /**

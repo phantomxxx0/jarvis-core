@@ -16,12 +16,16 @@ const mockInferenceWorker = {
           {
             id: '1',
             action: 'read_project_file',
+            executionType: 'capability',
+            capabilityRequired: 'read_project_file',
             arguments: { filePath: 'README.md' },
             dependencies: [],
           },
           {
             id: '2',
             action: 'execute_sql',
+            executionType: 'capability',
+            capabilityRequired: 'execute_sql',
             arguments: { query: 'SELECT 1' },
             dependencies: ['1'],
           },
@@ -90,12 +94,16 @@ describe('Phase 3.9 End-to-End Cognitive Pipeline Integration', () => {
             {
               id: '3',
               action: 'read_project_file',
+              executionType: 'capability',
+              capabilityRequired: 'read_project_file',
               arguments: { filePath: 'README.md' },
               dependencies: [],
             },
             {
               id: '4',
               action: 'execute_sql',
+              executionType: 'capability',
+              capabilityRequired: 'execute_sql',
               arguments: { query: 'SELECT 1' },
               dependencies: [],
             },
@@ -126,6 +134,7 @@ describe('Phase 3.9 End-to-End Cognitive Pipeline Integration', () => {
       planId: 'mock_plan',
       name: 'failing_tool',
       action: 'failing_tool',
+      executionType: 'capability' as const,
       capabilityRequired: 'failing_tool',
       arguments: {},
       dependencies: [],
@@ -169,5 +178,30 @@ describe('Phase 3.9 End-to-End Cognitive Pipeline Integration', () => {
     expect(
       jest.spyOn(plannerService, 'generateCorrectionArgs'),
     ).toHaveBeenCalled();
+  });
+
+  it('proves that Hello Jarvis creates an internal direct_llm_response step executed without a worker', async () => {
+    // We can simulate the user prompt "Hello Jarvis"
+    // Since it goes through processChat -> think -> plannerService.createPlan
+    // For a simple test, let's just use plannerService directly as per requirements
+    const intent = {
+      primaryGoal: 'Hello Jarvis',
+      category: 'DIRECT_CONVERSATION',
+      rawParameters: { answer: 'Hello! I am Jarvis.' },
+    };
+
+    const plan = await plannerService.createPlan(intent, {});
+    expect(plan.steps).toHaveLength(1);
+    
+    const step = plan.steps[0];
+    expect(step.action).toBe('direct_llm_response');
+    expect(step.executionType).toBe('internal');
+    expect(step.capabilityRequired).toBeUndefined();
+
+    // Now verify TaskEngineService handles it properly since it's responsible for execution
+    const engineService = moduleRef.get(TaskEngineService);
+    // use cast to bypass private executeStep
+    await (engineService as any).executeStep(step);
+    expect(step.output).toEqual({ answer: 'Hello! I am Jarvis.' });
   });
 });

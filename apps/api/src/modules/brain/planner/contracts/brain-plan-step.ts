@@ -12,7 +12,8 @@ export const BrainPlanStepSchema: z.ZodType<any> = z.lazy(() =>
     description: z.string().optional(),
     action: z.unknown(), // Accommodates the TAction generic
     arguments: z.unknown().optional(), // Accommodates the TArgs generic
-    capabilityRequired: z.string(),
+    executionType: z.enum(['internal', 'capability']),
+    capabilityRequired: z.string().optional(),
     output: z.unknown().optional(),
     error: z.string().optional(),
     status: z
@@ -36,7 +37,8 @@ export interface BrainPlanStep<TAction = unknown, TArgs = unknown> {
   readonly action: TAction;
   arguments?: TArgs;
 
-  capabilityRequired: string;
+  executionType: 'internal' | 'capability';
+  capabilityRequired?: string;
   output?: unknown;
   error?: string;
   status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'SKIPPED';

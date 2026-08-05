@@ -3,6 +3,8 @@ import { PlannerService } from '../planner/planner.service';
 import { CapabilityRegistryService } from '../../registry/capability-registry.service';
 import { TaskRouterService } from '../router/task-router.service';
 import { ObservationManagerService } from '../../observation/services/observation-manager.service';
+import { InferenceService } from '../../workers/inference/services/inference.service';
+import { InferenceProviderType } from '../../workers/inference/enums/provider.enum';
 
 @Injectable()
 export class ExecutionRunnerService {
@@ -13,6 +15,7 @@ export class ExecutionRunnerService {
     private readonly capabilityRegistry: CapabilityRegistryService,
     private readonly taskRouter: TaskRouterService,
     private readonly observationManager: ObservationManagerService,
+    private readonly inferenceService: InferenceService,
   ) {}
 
   async executeTask(
@@ -30,6 +33,47 @@ export class ExecutionRunnerService {
         this.logger.log(
           `[ExecutionRunner] Running task "${(currentTask.id as string) || (currentTask.name as string) || (currentTask.action as string)}" (Attempt ${attempt}/${maxRetries})`,
         );
+
+        if (currentTask.executionType === 'internal') {
+          if (currentTask.action === 'direct_llm_response') {
+            const args =
+              (currentTask.inputs ||
+                currentTask.params ||
+                currentTask.arguments ||
+                {}) as Record<string, unknown>;
+
+            const prompt = String(
+              args.prompt ??
+              args.message ??
+              args.question ??
+              args.input ??
+              ''
+            );
+
+            this.logger.debug({
+              prompt,
+            });
+
+            const response =
+              await this.inferenceService.infer(
+                InferenceProviderType.OLLAMA,
+                {
+                  modelId:
+                    process.env.OLLAMA_CHAT_MODEL ??
+                    'qwen3:8b',
+
+                  prompt,
+                },
+              );
+
+            this.logger.debug(response);
+
+            return {
+              answer: response.content,
+            };
+          }
+          throw new Error(`Unknown internal action: ${currentTask.action as string}`);
+        }
 
         const capabilityName =
           (currentTask.action as string) ||

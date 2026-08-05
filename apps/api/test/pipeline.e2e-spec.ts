@@ -5,6 +5,7 @@ import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { ChildProcess, spawn } from 'child_process';
 import * as path from 'path';
+import { mkdirSync, rmSync, writeFileSync } from 'fs';
 import { ExecutionOrchestratorService } from '../src/modules/runtime/services/execution-orchestrator.service';
 import {
   TaskExecution,
@@ -14,6 +15,7 @@ import {
 import { DatabaseService } from '../src/database/database.service';
 import { users } from '@jarvis/database';
 import { randomUUID } from 'crypto';
+import { eq } from 'drizzle-orm';
 
 describe('End-to-End Execution Pipeline (e2e)', () => {
   jest.setTimeout(30000);
@@ -24,6 +26,7 @@ describe('End-to-End Execution Pipeline (e2e)', () => {
 
   let db: DatabaseService;
   let testUserId: string;
+  let workspaceRoot: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -48,6 +51,17 @@ describe('End-to-End Execution Pipeline (e2e)', () => {
       role: 'USER',
     });
 
+    // Create an isolated workspace for this test run
+    workspaceRoot = path.join(
+      process.cwd(),
+      'tmp',
+      'e2e',
+      randomUUID(),
+    );
+    mkdirSync(workspaceRoot, {
+      recursive: true,
+    });
+
     // Spawn the worker node process
     const workerPath = path.resolve(
       __dirname,
@@ -57,15 +71,16 @@ describe('End-to-End Execution Pipeline (e2e)', () => {
       env: {
         ...process.env,
         CORE_SERVER_URL: 'ws://localhost:4001/cluster',
+        WORKSPACE_ROOT: workspaceRoot,
       },
       stdio: 'pipe',
     });
 
     workerProcess.stdout?.on('data', (data) =>
-      console.log(`Worker stdout: ${data}`),
+      console.log(`Worker stdout: ${data}`)
     );
     workerProcess.stderr?.on('data', (data) =>
-      console.error(`Worker stderr: ${data}`),
+      console.error(`Worker stderr: ${data}`)
     );
 
     // Wait 3 seconds for the worker to fully register and propagate via events
@@ -85,7 +100,20 @@ describe('End-to-End Execution Pipeline (e2e)', () => {
         }, 3000).unref();
       });
     }
+    
+    if (db) {
+      await db.db.delete(users).where(eq(users.id, testUserId));
+    }
+
     await app.close();
+
+    // Clean up the isolated workspace after the test completes
+    if (workspaceRoot) {
+      rmSync(workspaceRoot, {
+        recursive: true,
+        force: true,
+      });
+    }
   });
 
   it('should successfully execute system.info on the worker', async () => {
@@ -117,13 +145,20 @@ describe('End-to-End Execution Pipeline (e2e)', () => {
     expect(completedTask?.status).toBe(TaskExecutionStatus.SUCCESS);
     expect(completedTask?.output).toBeDefined();
     const output = completedTask?.output as
-      { system?: { platform?: string; arch?: string } } | undefined;
+      | { system?: { platform?: string; arch?: string } }
+      | undefined;
     console.log('system.info output:', JSON.stringify(output, null, 2));
     expect(output?.system?.platform).toBeDefined();
     expect(output?.system?.arch).toBeDefined();
   }, 15000);
 
   it('should successfully execute filesystem.read on the worker', async () => {
+    // FIX: Seed the sandbox with the file the worker expects to find
+    writeFileSync(
+      path.join(workspaceRoot, 'package.json'),
+      JSON.stringify({ name: 'api', description: 'test sandbox' })
+    );
+
     const task = await orchestrator.submitTask(
       testUserId,
       'filesystem.read',

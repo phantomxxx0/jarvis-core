@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import { AppModule } from './../src/app.module';
 import { ChildProcess, spawn } from 'child_process';
 import * as path from 'path';
+import { mkdirSync, rmSync } from 'fs';
 import { WorkflowEngineService } from '../src/modules/runtime/services/workflow-engine.service';
 import { WorkflowPlannerService } from '../src/modules/runtime/services/workflow-planner.service';
 import { CapabilityRegistryService } from '../src/modules/registry/capability-registry.service';
@@ -23,6 +24,7 @@ describe('End-to-End Smoke Test Pipeline (e2e)', () => {
 
   let db: DatabaseService;
   let testUserId: string;
+  let workspaceRoot: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -48,6 +50,12 @@ describe('End-to-End Smoke Test Pipeline (e2e)', () => {
       role: 'USER',
     });
 
+    // Create an isolated workspace for this test run
+    workspaceRoot = path.join(process.cwd(), 'tmp', 'e2e', randomUUID());
+    mkdirSync(workspaceRoot, {
+      recursive: true,
+    });
+
     // Spawn the worker node process
     const workerPath = path.resolve(
       __dirname,
@@ -57,6 +65,7 @@ describe('End-to-End Smoke Test Pipeline (e2e)', () => {
       env: {
         ...process.env,
         CORE_SERVER_URL: 'ws://localhost:4002/cluster',
+        WORKSPACE_ROOT: workspaceRoot,
       },
       stdio: 'pipe',
     });
@@ -98,6 +107,14 @@ describe('End-to-End Smoke Test Pipeline (e2e)', () => {
     // Delete test user to clean up DB
     await db.db.delete(users).where(eq(users.id, testUserId));
     await app.close();
+
+    // Clean up the isolated workspace after the test completes
+    if (workspaceRoot) {
+      rmSync(workspaceRoot, {
+        recursive: true,
+        force: true,
+      });
+    }
   });
 
   it('should successfully plan and execute a complete workflow', async () => {

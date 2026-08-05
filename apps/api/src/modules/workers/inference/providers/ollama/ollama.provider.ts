@@ -76,7 +76,14 @@ export class OllamaProvider implements IInferenceProvider {
         ),
       );
 
-      return OllamaMapper.toInferenceResponse(response.data);
+      this.logger.debug('=== OLLAMA RAW RESPONSE ===');
+      this.logger.debug(JSON.stringify(response.data, null, 2));
+
+      const inferenceResponse = OllamaMapper.toInferenceResponse(response.data);
+      this.logger.debug('=== MAPPED INFERENCE RESPONSE ===');
+      this.logger.debug(inferenceResponse);
+
+      return inferenceResponse;
     } catch (error) {
       const err = new Error() as Error & InferenceError;
       Object.assign(err, OllamaMapper.toError(error, request.modelId));

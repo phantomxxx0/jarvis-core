@@ -48,9 +48,20 @@ export class OllamaMapper {
   }
 
   static toInferenceResponse(response: OllamaChatResponse): InferenceResponse {
+    let finalContent = response.message?.content;
+    
+    // Support newer Ollama reasoning models (e.g. Qwen3) that split out the thinking
+    if (!finalContent && response.message?.thinking) {
+      finalContent = response.message.thinking;
+    } else if (response.message?.thinking) {
+      // If we have both, we can format them or just return content
+      // Often you might want to prepend thinking inside <think></think> tags
+      finalContent = `<think>\n${response.message.thinking}\n</think>\n\n${finalContent}`;
+    }
+
     return {
       success: response.done,
-      content: response.message?.content,
+      content: finalContent,
       finishReason: response.done_reason,
       promptTokens: response.prompt_eval_count,
       completionTokens: response.eval_count,

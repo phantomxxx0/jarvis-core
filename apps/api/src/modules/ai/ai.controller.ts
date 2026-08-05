@@ -14,15 +14,12 @@ export class AIController {
   constructor(private readonly brainService: BrainService) {}
 
   @Post('chat')
-  async chat(@CurrentUser() user: JwtPayload, @Body() dto: ChatDto) {
+  async chat(
+    @Body() dto: ChatDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
     const result = await this.brainService.processChat(dto.messages, user.id);
-    return {
-      success: true,
-      statusCode: 201,
-      timestamp: new Date().toISOString(),
-      path: '/ai/chat',
-      data: result.answer,
-    };
+    return result.answer; // Simplified: Let the global response interceptor wrap this!
   }
 
   @Post('stream')
@@ -42,9 +39,7 @@ export class AIController {
 
     try {
       sendEvent('status', { message: 'Initializing cognitive pipeline...' });
-
-      const latestMessage =
-        dto.messages[dto.messages.length - 1]?.content || '';
+      const latestMessage = dto.messages[dto.messages.length - 1]?.content || '';
 
       sendEvent('status', { message: 'Extracting intent and planning...' });
       const answer = await this.brainService.think(

@@ -11,6 +11,10 @@ export class TaskRouterService {
       `Resolving worker kind for capability: ${capabilityRequired}`,
     );
 
+    if (capabilityRequired === 'direct_llm_response') {
+      throw new Error(`Internal action should not be routed: ${capabilityRequired}`);
+    }
+
     switch (capabilityRequired) {
       case 'CHAT':
       case 'REASONING':
