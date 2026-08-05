@@ -73,8 +73,8 @@ export class NetworkValidator {
       if (this.isPrivateIp(lookup.address)) {
         throw new SSRFViolationError(lookup.address);
       }
-    } catch (err: any) {
-      if (err.name === "SSRFViolationError") throw err;
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "SSRFViolationError") throw err;
       // If DNS lookup fails, fetch will fail anyway. We let it pass or block based on strictness.
       // We will allow it to pass so fetch can throw the proper ENOTFOUND error.
     }

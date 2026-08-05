@@ -10,24 +10,27 @@ export class PluginLoader {
     private readonly pluginsDir: string = path.join(__dirname, "../plugins"),
   ) {}
 
+  /** Extensions that are executable at runtime. */
+  private static readonly EXECUTABLE_EXTENSIONS = new Set([
+    ".js",
+    ".mjs",
+    ".cjs",
+  ]);
+
   async loadAll(): Promise<void> {
     try {
       const files = await fs.readdir(this.pluginsDir);
 
       for (const file of files) {
-        if (!file.endsWith(".ts") && !file.endsWith(".js")) {
+        const ext = path.extname(file);
+        if (!PluginLoader.EXECUTABLE_EXTENSIONS.has(ext)) {
+          // Skip .d.ts, .d.mts, .map, .ts, and any other non-runtime files
           continue;
         }
 
         const fullPath = path.join(this.pluginsDir, file);
         try {
-          let module: any;
-          try {
-            module = require(fullPath);
-          } catch (reqErr) {
-            // Fallback for ESM modules
-            module = await import(fullPath);
-          }
+          const module = (await import(fullPath)) as Record<string, unknown>;
           this.registerModuleCapabilities(module);
         } catch (err) {
           console.error(`Failed to load plugin from ${file}:`, err);
@@ -41,12 +44,24 @@ export class PluginLoader {
     }
   }
 
-  private registerModuleCapabilities(module: any): void {
-    const exportsToScan = Array.from(
-      new Set([module.default, ...Object.values(module)]),
-    );
+  private registerModuleCapabilities(module: Record<string, unknown>): void {
+    const exportsToScan = new Set<unknown>();
 
-    for (const exp of exportsToScan) {
+    const extract = (obj: unknown) => {
+      if (obj && typeof obj === "object") {
+        exportsToScan.add(obj);
+        if ("default" in obj) {
+          extract((obj as Record<string, unknown>).default);
+        }
+      }
+    };
+
+    extract(module.default);
+    for (const val of Object.values(module)) {
+      extract(val);
+    }
+
+    for (const exp of Array.from(exportsToScan)) {
       try {
         if (this.isValidCapability(exp)) {
           if (!this.isPlatformSupported(exp.platform)) {
@@ -71,30 +86,32 @@ export class PluginLoader {
     }
   }
 
-  private isValidCapability(obj: any): obj is WorkerCapability {
+  private isValidCapability(obj: unknown): obj is WorkerCapability {
     if (!obj || typeof obj !== "object") return false;
 
+    const candidate = obj as Record<string, unknown>;
+
     // Only validate objects that look like they are intended to be capabilities
-    if (!obj.id && !obj.execute) return false;
+    if (!candidate.id && !candidate.execute) return false;
 
     const requiredString = ["id", "name", "version", "description", "category"];
     for (const field of requiredString) {
-      if (typeof obj[field] !== "string") {
+      if (typeof candidate[field] !== "string") {
         throw new Error(
-          `Capability manifest invalid: missing or invalid string field '${field}' in ${obj.id || "unknown"}`,
+          `Capability manifest invalid: missing or invalid string field '${field}' in ${typeof candidate.id === "string" ? candidate.id : "unknown"}`,
         );
       }
     }
 
-    if (typeof obj.execute !== "function") {
+    if (typeof candidate.execute !== "function") {
       throw new Error(
-        `Capability manifest invalid: missing execute function in ${obj.id}`,
+        `Capability manifest invalid: missing execute function in ${String(candidate.id)}`,
       );
     }
 
-    if (!obj.inputSchema) {
+    if (!candidate.inputSchema) {
       throw new Error(
-        `Capability manifest invalid: missing inputSchema in ${obj.id}`,
+        `Capability manifest invalid: missing inputSchema in ${String(candidate.id)}`,
       );
     }
 

@@ -2,25 +2,39 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ExecutionOrchestratorService } from './execution-orchestrator.service';
 import { DatabaseService } from '../../../database';
-import { TaskExecutionStatus } from '../contracts/execution.dto';
 
 describe('ExecutionOrchestratorService', () => {
   let service: ExecutionOrchestratorService;
-  let dbMock: any;
-  let eventEmitterMock: any;
+  let dbMock: {
+    db: {
+      insert: jest.Mock;
+      values: jest.Mock;
+      returning: jest.Mock;
+      select: jest.Mock;
+      from: jest.Mock;
+      where: jest.Mock;
+      update: jest.Mock;
+      set: jest.Mock;
+    };
+  };
+  let eventEmitterMock: { emit: jest.Mock };
 
   beforeEach(async () => {
     dbMock = {
       db: {
         insert: jest.fn().mockReturnThis(),
         values: jest.fn().mockReturnThis(),
-        returning: jest.fn().mockResolvedValue([{ id: 'test-id', status: 'PENDING' }]),
+        returning: jest
+          .fn()
+          .mockResolvedValue([{ id: 'test-id', status: 'PENDING' }]),
         select: jest.fn().mockReturnThis(),
         from: jest.fn().mockReturnThis(),
-        where: jest.fn().mockResolvedValue([{ id: 'test-id', status: 'QUEUED' }]),
+        where: jest
+          .fn()
+          .mockResolvedValue([{ id: 'test-id', status: 'QUEUED' }]),
         update: jest.fn().mockReturnThis(),
         set: jest.fn().mockReturnThis(),
-      }
+      },
     };
 
     eventEmitterMock = {
@@ -35,7 +49,9 @@ describe('ExecutionOrchestratorService', () => {
       ],
     }).compile();
 
-    service = module.get<ExecutionOrchestratorService>(ExecutionOrchestratorService);
+    service = module.get<ExecutionOrchestratorService>(
+      ExecutionOrchestratorService,
+    );
   });
 
   afterEach(() => {
@@ -48,13 +64,15 @@ describe('ExecutionOrchestratorService', () => {
 
   describe('submitTask', () => {
     it('should create a task and transition to QUEUED', async () => {
-      const task = await service.submitTask('user1', 'shell.exec', { command: 'ls' });
+      const task = await service.submitTask('user1', 'shell.exec', {
+        command: 'ls',
+      });
       expect(task).toBeDefined();
       expect(dbMock.db.insert).toHaveBeenCalled();
       expect(dbMock.db.update).toHaveBeenCalled();
       expect(eventEmitterMock.emit).toHaveBeenCalledWith(
         'TaskExecution.QUEUED',
-        expect.anything()
+        expect.anything(),
       );
     });
   });
@@ -62,39 +80,45 @@ describe('ExecutionOrchestratorService', () => {
   describe('setRunning', () => {
     it('should start dual timeout and transition to RUNNING', async () => {
       // Mock getExecution for the internal lookup
-      dbMock.db.where.mockResolvedValueOnce([{ id: 'test-id', timeoutMs: 100, status: 'RUNNING' }]);
-      
+      dbMock.db.where.mockResolvedValueOnce([
+        { id: 'test-id', timeoutMs: 100, status: 'RUNNING' },
+      ]);
+
       await service.setRunning('test-id');
-      
+
       expect(dbMock.db.update).toHaveBeenCalled();
       expect(eventEmitterMock.emit).toHaveBeenCalledWith(
         'TaskExecution.RUNNING',
-        expect.anything()
+        expect.anything(),
       );
     });
   });
 
   describe('failTask', () => {
     it('should retry if attempts < maxRetries', async () => {
-      dbMock.db.where.mockResolvedValueOnce([{ id: 'test-id', attempts: 0, maxRetries: 3 }]);
-      
+      dbMock.db.where.mockResolvedValueOnce([
+        { id: 'test-id', attempts: 0, maxRetries: 3 },
+      ]);
+
       await service.failTask('test-id', { message: 'Network error' });
-      
+
       expect(dbMock.db.update).toHaveBeenCalled(); // Increment attempt
       expect(eventEmitterMock.emit).toHaveBeenCalledWith(
         'TaskExecution.RETRYING',
-        expect.anything()
+        expect.anything(),
       );
     });
 
     it('should fail if maxRetries reached', async () => {
-      dbMock.db.where.mockResolvedValueOnce([{ id: 'test-id', attempts: 3, maxRetries: 3 }]);
-      
+      dbMock.db.where.mockResolvedValueOnce([
+        { id: 'test-id', attempts: 3, maxRetries: 3 },
+      ]);
+
       await service.failTask('test-id', { message: 'Network error' });
-      
+
       expect(eventEmitterMock.emit).toHaveBeenCalledWith(
         'TaskExecution.FAILED',
-        expect.anything()
+        expect.anything(),
       );
     });
   });

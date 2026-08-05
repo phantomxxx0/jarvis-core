@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WorkerCapability, WorkerContext } from "../sdk/worker-capability";
+import { WorkerCapability } from "../sdk/worker-capability";
 import { processManager } from "../services/process-manager";
 
 const InputSchema = z.object({
@@ -16,10 +16,14 @@ export const processKill: WorkerCapability = {
   version: "1.0.0",
   description: "Kill a managed background process",
   category: "system",
-  inputSchema: InputSchema.toJSONSchema() as any,
-  outputSchema: OutputSchema.toJSONSchema() as any,
+  inputSchema:
+    InputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
+  outputSchema:
+    OutputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
 
-  async execute(input: unknown, _context: WorkerContext) {
+  async execute(input: unknown) {
+    await Promise.resolve();
+
     const parsed = InputSchema.parse(input);
 
     const success = processManager.killProcess(parsed.processId);

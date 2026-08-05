@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WorkerCapability, WorkerContext } from "../sdk/worker-capability";
+import { WorkerCapability } from "../sdk/worker-capability";
 import { ProcessRunner } from "../utils/process-runner";
 
 const InputSchema = z.object({
@@ -16,10 +16,12 @@ export const dockerInspect: WorkerCapability = {
   version: "1.0.0",
   description: "Return low-level information on Docker objects",
   category: "system",
-  inputSchema: InputSchema.toJSONSchema() as any,
-  outputSchema: OutputSchema.toJSONSchema() as any,
+  inputSchema:
+    InputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
+  outputSchema:
+    OutputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
 
-  async execute(input: unknown, _context: WorkerContext) {
+  async execute(input: unknown) {
     const parsed = InputSchema.parse(input);
 
     const args = ["inspect", parsed.container];
@@ -30,9 +32,9 @@ export const dockerInspect: WorkerCapability = {
       throw new Error(`Docker error: ${res.stderr || res.stdout}`);
     }
 
-    let info = [];
+    let info: unknown[] = [];
     try {
-      info = JSON.parse(res.stdout);
+      info = JSON.parse(res.stdout) as unknown[];
     } catch {
       throw new Error("Failed to parse docker inspect JSON output");
     }

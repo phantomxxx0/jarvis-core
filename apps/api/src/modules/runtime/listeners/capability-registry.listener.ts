@@ -18,7 +18,10 @@ export class CapabilityRegistryListener {
     try {
       this.registryService.registerWorker(event.manifest);
     } catch (err) {
-      this.logger.error(`Failed to register worker ${event.identity.nodeId} capabilities:`, err instanceof Error ? err.message : String(err));
+      this.logger.error(
+        `Failed to register worker ${event.identity.nodeId} capabilities:`,
+        err instanceof Error ? err.message : String(err),
+      );
     }
   }
 

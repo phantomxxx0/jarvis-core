@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WorkerCapability, WorkerContext } from "../sdk/worker-capability";
+import { WorkerCapability } from "../sdk/worker-capability";
 import { sandbox } from "../services/filesystem-sandbox";
 import { NetworkValidator } from "../utils/network-validator";
 import * as path from "path";
@@ -27,10 +27,12 @@ export const httpDownload: WorkerCapability = {
   version: "1.0.0",
   description: "Download a file and store it in the workspace",
   category: "network",
-  inputSchema: InputSchema.toJSONSchema() as any,
-  outputSchema: OutputSchema.toJSONSchema() as any,
+  inputSchema:
+    InputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
+  outputSchema:
+    OutputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
 
-  async execute(input: unknown, _context: WorkerContext) {
+  async execute(input: unknown) {
     const parsed = InputSchema.parse(input);
 
     const downloadsDir = ".jarvis/downloads";
@@ -38,7 +40,9 @@ export const httpDownload: WorkerCapability = {
 
     try {
       await fsp.mkdir(absoluteDownloadsDir, { recursive: true });
-    } catch {}
+    } catch (err) {
+      void err;
+    }
 
     await NetworkValidator.validateUrl(parsed.url);
 

@@ -31,8 +31,19 @@ export class JarvisWorkerRuntime {
     console.log(`[Runtime] Stopping worker node ${this.nodeId}`);
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = undefined;
     }
+    // Remove stale callbacks before disconnecting
+    this.socket.removeAllListeners();
+    // Disconnect immediately — do not wait for server ack.
+    // process.exit(0) follows synchronously, so we only need to ensure
+    // the socket's internal manager timers cannot prevent exit.
     this.socket.disconnect();
+    // Unref the manager so its internal reconnect/ping timers are not
+    // counted as active handles keeping the process alive.
+    (
+      this.socket.io as unknown as { _reconnectTimer?: NodeJS.Timeout }
+    )._reconnectTimer?.unref();
   }
 
   private setupListeners(): void {

@@ -69,6 +69,8 @@ export default {
   },
 
   async execute(_input: unknown, context: WorkerContext) {
+    await Promise.resolve();
+
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
     const cpus = os.cpus();

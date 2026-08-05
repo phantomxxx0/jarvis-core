@@ -24,12 +24,12 @@ export class ProcessRunner {
         shell: options.shell ?? false,
       });
 
-      child.stdout.on("data", (data) => {
-        stdout += data.toString();
+      child.stdout.on("data", (data: Buffer) => {
+        stdout += data.toString("utf8");
       });
 
-      child.stderr.on("data", (data) => {
-        stderr += data.toString();
+      child.stderr.on("data", (data: Buffer) => {
+        stderr += data.toString("utf8");
       });
 
       let hasTimedOut = false;

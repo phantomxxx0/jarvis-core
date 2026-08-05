@@ -1,4 +1,3 @@
-import * as fs from "fs";
 import * as fsp from "fs/promises";
 import * as path from "path";
 
@@ -83,11 +82,11 @@ export class FilesystemSandbox {
             if (recursive && dirent.isDirectory()) {
               stack.push(fullPath);
             }
-          } catch (statErr) {
+          } catch {
             // Ignore broken symlinks or unreadable files
           }
         }
-      } catch (err) {
+      } catch {
         // Ignore unreadable directories
       }
     }
@@ -193,7 +192,7 @@ export class FilesystemSandbox {
             }
           }
         }
-      } catch (err) {
+      } catch {
         // Ignore unreadable directories
       }
     }
@@ -237,7 +236,13 @@ export class FilesystemSandbox {
     return { success: true };
   }
 
-  public async stat(targetPath: string): Promise<any> {
+  public async stat(targetPath: string): Promise<{
+    isFile: boolean;
+    isDirectory: boolean;
+    size: number;
+    createdAt: string;
+    modifiedAt: string;
+  }> {
     const safePath = this.resolveSafePath(targetPath);
     const stats = await fsp.stat(safePath);
     return {

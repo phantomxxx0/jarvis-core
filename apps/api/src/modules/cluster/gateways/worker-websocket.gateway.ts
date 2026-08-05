@@ -30,7 +30,13 @@ import type {
   cors: { origin: '*' },
 })
 export class WorkerWebSocketGateway
-  implements OnGatewayConnection, OnGatewayDisconnect, WorkerTransportGateway, ExecutionTransport, OnModuleInit {
+  implements
+    OnGatewayConnection,
+    OnGatewayDisconnect,
+    WorkerTransportGateway,
+    ExecutionTransport,
+    OnModuleInit
+{
   @WebSocketServer()
   server: Server;
 
@@ -50,11 +56,13 @@ export class WorkerWebSocketGateway
     this.taskDispatcher.registerTransport(this);
   }
 
-  async handleConnection(client: Socket) {
-    this.logger.log(`Client connected: ${client.id}. Waiting for registration...`);
+  handleConnection(client: Socket) {
+    this.logger.log(
+      `Client connected: ${client.id}. Waiting for registration...`,
+    );
   }
 
-  async handleDisconnect(client: Socket) {
+  handleDisconnect(client: Socket) {
     const nodeId = this.socketNodes.get(client.id);
     if (nodeId) {
       this.disconnect(nodeId);
@@ -64,7 +72,8 @@ export class WorkerWebSocketGateway
   @SubscribeMessage('register')
   handleRegister(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { identity: NodeIdentity; manifest: ClusterManifest },
+    @MessageBody()
+    payload: { identity: NodeIdentity; manifest: ClusterManifest },
   ) {
     const { identity, manifest } = payload;
     const session = this.clusterManager.registerNode(identity, manifest);
@@ -77,7 +86,9 @@ export class WorkerWebSocketGateway
   }
 
   connect(nodeId: string): void {
-    this.logger.log(`Node ${nodeId} successfully registered on WebSocket Gateway`);
+    this.logger.log(
+      `Node ${nodeId} successfully registered on WebSocket Gateway`,
+    );
   }
 
   disconnect(nodeId: string): void {
@@ -89,7 +100,9 @@ export class WorkerWebSocketGateway
 
     try {
       this.clusterManager.removeNodeLease(nodeId);
-    } catch {}
+    } catch (e) {
+      this.logger.debug(`Failed to remove lease for ${nodeId}`, e);
+    }
 
     this.eventEmitter.emit(
       NodeOfflineEvent.EVENT_NAME,
@@ -103,51 +116,59 @@ export class WorkerWebSocketGateway
       throw new Error(`Node ${nodeId} is not connected`);
     }
     this.server.to(socketId).emit('task.dispatch', task);
+    await Promise.resolve();
   }
 
-  async dispatchExecution(workerId: string, executionId: string, capabilityId: string, input: any): Promise<void> {
+  async dispatchExecution(
+    workerId: string,
+    executionId: string,
+    capabilityId: string,
+    input: unknown,
+  ): Promise<void> {
     const socketId = this.nodeSockets.get(workerId);
     if (!socketId) {
       throw new Error(`Node ${workerId} is not connected`);
     }
-    
+
     const task: TaskEnvelope = {
       taskId: executionId,
       capabilityId: capabilityId,
-      payload: input,
+      payload: (input as Record<string, unknown>) ?? {},
       traceId: `trace-${executionId}`,
       correlationId: executionId,
       executionId: executionId,
     };
-    
+
     this.server.to(socketId).emit('task.dispatch', task);
+    await Promise.resolve();
   }
 
   async cancelTask(workerId: string, executionId: string): Promise<void> {
     const socketId = this.nodeSockets.get(workerId);
     if (socketId) {
-       this.server.to(socketId).emit('task.cancel', { executionId });
+      this.server.to(socketId).emit('task.cancel', { executionId });
     }
+    await Promise.resolve();
   }
 
-  onHeartbeat(nodeId: string, frame: HeartbeatFrame): void {
-    // Original implementation handled by handleHeartbeatMessage
+  onHeartbeat(_nodeId: string, _frame: HeartbeatFrame): void {
+    this.logger.debug(`onHeartbeat method stub called for ${_nodeId}`, _frame);
   }
 
-  onProgress(nodeId: string, frame: ProgressFrame): void {
-    // Original implementation handled by handleProgressMessage
+  onProgress(_nodeId: string, _frame: ProgressFrame): void {
+    this.logger.debug(`onProgress method stub called for ${_nodeId}`, _frame);
   }
 
-  onResult(nodeId: string, result: ResultEnvelope): void {
-    // Original implementation handled by handleResultMessage
+  onResult(_nodeId: string, _result: ResultEnvelope): void {
+    this.logger.debug(`onResult method stub called for ${_nodeId}`, _result);
   }
 
   @SubscribeMessage('heartbeat')
   handleHeartbeatMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: unknown,
+    @MessageBody() _payload: unknown,
   ) {
-    const frame = payload as HeartbeatFrame;
+    this.logger.debug('Received heartbeat payload', _payload);
     const nodeId = this.socketNodes.get(client.id);
     if (nodeId) {
       try {
@@ -168,7 +189,9 @@ export class WorkerWebSocketGateway
     if (nodeId) {
       const execId = frame.executionId || frame.correlationId;
       if (execId) {
-        this.executionOrchestrator.updateProgress(execId, frame.progress || 0).catch(err => this.logger.error(err));
+        this.executionOrchestrator
+          .updateProgress(execId, frame.progress || 0)
+          .catch((err) => this.logger.error(err));
       }
     }
   }
@@ -184,9 +207,18 @@ export class WorkerWebSocketGateway
       const execId = result.executionId || result.correlationId;
       if (execId) {
         if (result.status === 'SUCCESS') {
-          this.executionOrchestrator.completeTask(execId, (result as any).result ?? (result as any).data ?? (result as any).payload).catch(err => this.logger.error(err));
+          this.executionOrchestrator
+            .completeTask(
+              execId,
+              (result as unknown as Record<string, unknown>).result ??
+                (result as unknown as Record<string, unknown>).data ??
+                (result as unknown as Record<string, unknown>).payload,
+            )
+            .catch((err) => this.logger.error(err));
         } else {
-          this.executionOrchestrator.failTask(execId, result.error).catch(err => this.logger.error(err));
+          this.executionOrchestrator
+            .failTask(execId, result.error)
+            .catch((err) => this.logger.error(err));
         }
       }
     }

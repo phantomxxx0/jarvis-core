@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WorkerCapability, WorkerContext } from "../sdk/worker-capability";
+import { WorkerCapability } from "../sdk/worker-capability";
 import { sandbox } from "../services/filesystem-sandbox";
 import { NetworkValidator } from "../utils/network-validator";
 import * as fsp from "fs/promises";
@@ -29,10 +29,12 @@ export const httpUpload: WorkerCapability = {
   version: "1.0.0",
   description: "Upload a file using multipart/form-data",
   category: "network",
-  inputSchema: InputSchema.toJSONSchema() as any,
-  outputSchema: OutputSchema.toJSONSchema() as any,
+  inputSchema:
+    InputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
+  outputSchema:
+    OutputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
 
-  async execute(input: unknown, _context: WorkerContext) {
+  async execute(input: unknown) {
     const parsed = InputSchema.parse(input);
     const absoluteFilePath = sandbox.resolveSafePath(parsed.path);
 
@@ -59,10 +61,10 @@ export const httpUpload: WorkerCapability = {
     });
 
     const contentType = response.headers.get("content-type") || "";
-    let data;
+    let data: unknown;
 
     if (contentType.includes("application/json")) {
-      data = await response.json();
+      data = (await response.json()) as unknown;
     } else {
       data = await response.text();
     }

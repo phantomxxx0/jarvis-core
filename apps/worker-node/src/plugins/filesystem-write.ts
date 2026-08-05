@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { WorkerCapability } from "../sdk/worker-capability";
 import { sandbox } from "../services/filesystem-sandbox";
-import type { WorkerContext } from "../sdk/worker-capability";
+import type {} from "../sdk/worker-capability";
 
 const InputSchema = z.object({
   path: z.string(),
@@ -20,10 +20,12 @@ export const filesystemWrite: WorkerCapability = {
   description:
     "Write content to a file (creates parent directories automatically)",
   category: "filesystem",
-  inputSchema: InputSchema.toJSONSchema() as any,
-  outputSchema: OutputSchema.toJSONSchema() as any,
+  inputSchema:
+    InputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
+  outputSchema:
+    OutputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
 
-  async execute(input: unknown, _context: WorkerContext) {
+  async execute(input: unknown) {
     const parsed = InputSchema.parse(input);
     const result = await sandbox.write(
       parsed.path,

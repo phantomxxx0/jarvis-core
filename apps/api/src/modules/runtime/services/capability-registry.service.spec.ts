@@ -62,7 +62,7 @@ describe('CapabilityRegistryService', () => {
         minimumWorkerVersion: '1.0',
         supportedProtocols: ['socket.io'],
       };
-      
+
       expect(() => service.registerWorker(emptyManifest)).not.toThrow();
       expect(service.listWorkers()).toHaveLength(0);
     });
@@ -70,10 +70,12 @@ describe('CapabilityRegistryService', () => {
     it('should throw on malformed worker schema', () => {
       const invalidManifest = {
         ...validWorkerManifest,
-        worker: { id: 123 } as any, // invalid id type
+        worker: { id: 123 } as unknown as ClusterManifest['worker'], // invalid id type
       };
 
-      expect(() => service.registerWorker(invalidManifest)).toThrow('Malformed worker manifest');
+      expect(() => service.registerWorker(invalidManifest)).toThrow(
+        'Malformed worker manifest',
+      );
     });
 
     it('should reject duplicate capability IDs within a single worker', () => {
@@ -85,12 +87,14 @@ describe('CapabilityRegistryService', () => {
         ],
       };
 
-      expect(() => service.registerWorker(dupManifest)).toThrow('Duplicate capability IDs within a single worker');
+      expect(() => service.registerWorker(dupManifest)).toThrow(
+        'Duplicate capability IDs within a single worker',
+      );
     });
 
     it('should allow multiple workers to expose the same capability', () => {
       service.registerWorker(validWorkerManifest);
-      
+
       const worker2Manifest = {
         ...validWorkerManifest,
         worker: {
@@ -112,7 +116,7 @@ describe('CapabilityRegistryService', () => {
 
     it('should cleanup old state on reconnect (same worker ID)', () => {
       service.registerWorker(validWorkerManifest);
-      
+
       // Reconnect with same ID, different capabilities
       const reconnectManifest = {
         ...validWorkerManifest,
@@ -132,7 +136,7 @@ describe('CapabilityRegistryService', () => {
   describe('worker unregistration', () => {
     it('should remove worker and release capability indexes', () => {
       service.registerWorker(validWorkerManifest);
-      
+
       service.unregisterWorker('worker-1');
 
       expect(service.getWorker('worker-1')).toBeUndefined();
@@ -143,7 +147,7 @@ describe('CapabilityRegistryService', () => {
 
     it('should not delete capability if another worker still provides it', () => {
       service.registerWorker(validWorkerManifest);
-      
+
       const worker2Manifest = {
         ...validWorkerManifest,
         worker: {
@@ -156,7 +160,7 @@ describe('CapabilityRegistryService', () => {
       service.unregisterWorker('worker-1');
 
       expect(service.getWorker('worker-1')).toBeUndefined();
-      
+
       const cap = service.getCapability('system.info');
       expect(cap).toBeDefined();
       expect(cap?.workerIds).toContain('worker-2');

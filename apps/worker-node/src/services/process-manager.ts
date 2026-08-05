@@ -59,7 +59,7 @@ export class ProcessManagerService {
       }
     });
 
-    child.on("error", (err) => {
+    child.on("error", () => {
       const entry = this.processes.get(processId);
       if (entry) {
         entry.info.status = "failed";
@@ -88,7 +88,7 @@ export class ProcessManagerService {
       } else {
         try {
           process.kill(-entry.process.pid, "SIGKILL"); // kill process group
-        } catch (e) {
+        } catch {
           entry.process.kill("SIGKILL");
         }
       }
@@ -110,14 +110,12 @@ export class ProcessManagerService {
     }
 
     return new Promise((resolve, reject) => {
-      let timer: NodeJS.Timeout;
-
       const onExit = () => {
-        clearTimeout(timer);
+        if (timer) clearTimeout(timer);
         resolve(entry.info);
       };
 
-      timer = setTimeout(() => {
+      const timer = setTimeout(() => {
         entry.process.removeListener("exit", onExit);
         reject(new Error(`Wait timeout for process ${processId}`));
       }, timeoutMs);
@@ -131,7 +129,9 @@ export class ProcessManagerService {
       if (entry.info.status === "running") {
         try {
           this.killProcess(processId);
-        } catch {}
+        } catch {
+          // ignored
+        }
       }
     }
     this.processes.clear();

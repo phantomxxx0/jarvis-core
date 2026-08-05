@@ -1,9 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { WorkflowDefinition, WorkflowStep } from '../contracts/workflow.dto';
+import { WorkflowDefinition } from '../contracts/workflow.dto';
 import { CapabilityRegistryService } from './capability-registry.service';
 
 export class WorkflowValidationError extends Error {
-  constructor(message: string, public readonly stepId?: string) {
+  constructor(
+    message: string,
+    public readonly stepId?: string,
+  ) {
     super(message);
     this.name = 'WorkflowValidationError';
   }
@@ -15,7 +18,10 @@ export class WorkflowValidatorService {
 
   constructor(private readonly capabilityRegistry: CapabilityRegistryService) {}
 
-  public validate(definition: WorkflowDefinition): { valid: boolean; errors: string[] } {
+  public validate(definition: WorkflowDefinition): {
+    valid: boolean;
+    errors: string[];
+  } {
     const errors: string[] = [];
 
     try {
@@ -24,32 +30,43 @@ export class WorkflowValidatorService {
       this.validateDependencies(definition);
       this.validateCycles(definition);
       this.validateVariables(definition);
-    } catch (e: any) {
+    } catch (e) {
       if (e instanceof WorkflowValidationError) {
         errors.push(e.message);
       } else {
-        errors.push(e.message || 'Unknown validation error');
+        const msg = e instanceof Error ? e.message : String(e);
+        errors.push(msg || 'Unknown validation error');
       }
     }
 
     return {
       valid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
   private validateStructure(definition: WorkflowDefinition) {
     if (!definition || !definition.steps || !Array.isArray(definition.steps)) {
-      throw new WorkflowValidationError('Workflow definition must contain a steps array');
+      throw new WorkflowValidationError(
+        'Workflow definition must contain a steps array',
+      );
     }
 
     const stepIds = new Set<string>();
     for (const step of definition.steps) {
-      if (!step.id) throw new WorkflowValidationError('Every step must have an id');
-      if (!step.capabilityId) throw new WorkflowValidationError(`Step ${step.id} must have a capabilityId`, step.id);
-      
+      if (!step.id)
+        throw new WorkflowValidationError('Every step must have an id');
+      if (!step.capabilityId)
+        throw new WorkflowValidationError(
+          `Step ${step.id} must have a capabilityId`,
+          step.id,
+        );
+
       if (stepIds.has(step.id)) {
-        throw new WorkflowValidationError(`Duplicate step id found: ${step.id}`, step.id);
+        throw new WorkflowValidationError(
+          `Duplicate step id found: ${step.id}`,
+          step.id,
+        );
       }
       stepIds.add(step.id);
     }
@@ -57,20 +74,28 @@ export class WorkflowValidatorService {
 
   private validateCapabilities(definition: WorkflowDefinition) {
     for (const step of definition.steps) {
-      const capability = this.capabilityRegistry.getCapability(step.capabilityId);
+      const capability = this.capabilityRegistry.getCapability(
+        step.capabilityId,
+      );
       if (!capability) {
-        throw new WorkflowValidationError(`Unknown capability required: ${step.capabilityId}`, step.id);
+        throw new WorkflowValidationError(
+          `Unknown capability required: ${step.capabilityId}`,
+          step.id,
+        );
       }
     }
   }
 
   private validateDependencies(definition: WorkflowDefinition) {
-    const stepIds = new Set(definition.steps.map(s => s.id));
+    const stepIds = new Set(definition.steps.map((s) => s.id));
     for (const step of definition.steps) {
       if (step.dependencies) {
         for (const dep of step.dependencies) {
           if (!stepIds.has(dep)) {
-            throw new WorkflowValidationError(`Step ${step.id} declares an unknown dependency: ${dep}`, step.id);
+            throw new WorkflowValidationError(
+              `Step ${step.id} declares an unknown dependency: ${dep}`,
+              step.id,
+            );
           }
         }
       }
@@ -89,7 +114,10 @@ export class WorkflowValidatorService {
 
     const visit = (node: string) => {
       if (visiting.has(node)) {
-        throw new WorkflowValidationError(`Cycle detected involving step ${node}`, node);
+        throw new WorkflowValidationError(
+          `Cycle detected involving step ${node}`,
+          node,
+        );
       }
       if (visited.has(node)) return;
 
@@ -112,14 +140,17 @@ export class WorkflowValidatorService {
   private validateVariables(definition: WorkflowDefinition) {
     // Ensure interpolated variables like ${step1.output.foo} reference a valid upstream dependency
     // NOTE: For strict validation, the referenced step MUST be in the dependency chain (either direct or indirect)
-    
+
     // First, build indirect dependency map
     const adj = new Map<string, string[]>();
     for (const step of definition.steps) {
       adj.set(step.id, step.dependencies || []);
     }
 
-    const getAllAncestors = (node: string, memo: Map<string, Set<string>> = new Map()): Set<string> => {
+    const getAllAncestors = (
+      node: string,
+      memo: Map<string, Set<string>> = new Map(),
+    ): Set<string> => {
       if (memo.has(node)) return memo.get(node)!;
       const ancestors = new Set<string>();
       const deps = adj.get(node) || [];
@@ -136,21 +167,24 @@ export class WorkflowValidatorService {
     const memo = new Map<string, Set<string>>();
     for (const step of definition.steps) {
       const ancestors = getAllAncestors(step.id, memo);
-      
-      const checkNode = (obj: any) => {
+
+      const checkNode = (obj: unknown) => {
         if (typeof obj === 'string') {
           const matches = obj.matchAll(/\$\{([^}]+)\}/g);
           for (const match of matches) {
             const path = match[1];
             const targetStepId = path.split('.')[0];
             if (!ancestors.has(targetStepId)) {
-              throw new WorkflowValidationError(`Variable interpolation "${match[0]}" in step ${step.id} references ${targetStepId} which is not an upstream dependency.`, step.id);
+              throw new WorkflowValidationError(
+                `Variable interpolation "${match[0]}" in step ${step.id} references ${targetStepId} which is not an upstream dependency.`,
+                step.id,
+              );
             }
           }
         } else if (Array.isArray(obj)) {
           obj.forEach(checkNode);
         } else if (obj !== null && typeof obj === 'object') {
-          for (const val of Object.values(obj)) {
+          for (const val of Object.values(obj as Record<string, unknown>)) {
             checkNode(val);
           }
         }

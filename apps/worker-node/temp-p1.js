@@ -1,0 +1,1 @@
+module.exports = { default: { id: "test.plugin1", name: "Plugin 1", version: "1.0", description: "A valid plugin", category: "test", platform: ["all"], inputSchema: { type: "object" }, execute: async () => {} } };

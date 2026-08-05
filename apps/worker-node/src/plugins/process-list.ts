@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WorkerCapability, WorkerContext } from "../sdk/worker-capability";
+import { WorkerCapability } from "../sdk/worker-capability";
 import { processManager } from "../services/process-manager";
 
 const InputSchema = z.object({});
@@ -22,10 +22,14 @@ export const processList: WorkerCapability = {
   version: "1.0.0",
   description: "List all managed background processes",
   category: "system",
-  inputSchema: InputSchema.toJSONSchema() as any,
-  outputSchema: OutputSchema.toJSONSchema() as any,
+  inputSchema:
+    InputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
+  outputSchema:
+    OutputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
 
-  async execute(input: unknown, _context: WorkerContext) {
+  async execute(input: unknown) {
+    await Promise.resolve();
+
     InputSchema.parse(input);
 
     const processes = processManager.getProcessList().map((p) => ({

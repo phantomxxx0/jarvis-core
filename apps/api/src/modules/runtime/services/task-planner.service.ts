@@ -1,5 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { CapabilityRegistryService, WorkerRecord } from './capability-registry.service';
+import {
+  CapabilityRegistryService,
+  WorkerRecord,
+} from './capability-registry.service';
 import { TaskRequest, TaskPlan } from '../contracts/task-plan.interface';
 import { SelectionStrategy } from './strategies/selection-strategy.interface';
 import { FirstAvailableStrategy } from './strategies/first-available.strategy';
@@ -24,13 +27,15 @@ export class TaskPlannerService {
       throw new PlannerValidationException('capabilityId is required');
     }
 
-    const capability = this.capabilityRegistry.getCapability(request.capabilityId);
+    const capability = this.capabilityRegistry.getCapability(
+      request.capabilityId,
+    );
     if (!capability) {
       throw new CapabilityNotFoundException(request.capabilityId);
     }
 
     const candidates = capability.workerIds;
-    
+
     // Resolve full worker records
     const eligibleWorkers: WorkerRecord[] = [];
     for (const workerId of candidates) {

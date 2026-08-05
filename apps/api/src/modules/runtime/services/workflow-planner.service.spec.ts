@@ -6,21 +6,23 @@ import { InferenceService } from '../../workers/inference/services/inference.ser
 
 describe('WorkflowPlannerService', () => {
   let service: WorkflowPlannerService;
-  let inferenceMock: any;
-  let validatorMock: any;
-  let registryMock: any;
+  let inferenceMock: { infer: jest.Mock };
+  let validatorMock: { validate: jest.Mock };
+  let registryMock: { listCapabilities: jest.Mock };
 
   beforeEach(async () => {
     inferenceMock = {
-      infer: jest.fn()
+      infer: jest.fn(),
     };
-    
+
     validatorMock = {
-      validate: jest.fn().mockReturnValue({ valid: true, errors: [] })
+      validate: jest.fn().mockReturnValue({ valid: true, errors: [] }),
     };
 
     registryMock = {
-      listCapabilities: jest.fn().mockReturnValue([{ id: 'cap1', description: 'desc1' }])
+      listCapabilities: jest
+        .fn()
+        .mockReturnValue([{ id: 'cap1', description: 'desc1' }]),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -28,7 +30,7 @@ describe('WorkflowPlannerService', () => {
         WorkflowPlannerService,
         { provide: InferenceService, useValue: inferenceMock },
         { provide: WorkflowValidatorService, useValue: validatorMock },
-        { provide: CapabilityRegistryService, useValue: registryMock }
+        { provide: CapabilityRegistryService, useValue: registryMock },
       ],
     }).compile();
 
@@ -41,7 +43,9 @@ describe('WorkflowPlannerService', () => {
 
   it('should successfully plan a workflow', async () => {
     inferenceMock.infer.mockResolvedValueOnce({
-      content: JSON.stringify({ steps: [{ id: '1', capabilityId: 'cap1', input: {}, dependencies: [] }] })
+      content: JSON.stringify({
+        steps: [{ id: '1', capabilityId: 'cap1', input: {}, dependencies: [] }],
+      }),
     });
 
     const result = await service.plan('do something');
@@ -54,14 +58,20 @@ describe('WorkflowPlannerService', () => {
   it('should attempt repair if validation fails', async () => {
     inferenceMock.infer
       .mockResolvedValueOnce({ content: JSON.stringify({ steps: [] }) }) // Invalid output first time
-      .mockResolvedValueOnce({ content: JSON.stringify({ steps: [{ id: '1', capabilityId: 'cap1', input: {}, dependencies: [] }] }) }); // Valid output second time
-      
+      .mockResolvedValueOnce({
+        content: JSON.stringify({
+          steps: [
+            { id: '1', capabilityId: 'cap1', input: {}, dependencies: [] },
+          ],
+        }),
+      }); // Valid output second time
+
     validatorMock.validate
       .mockReturnValueOnce({ valid: false, errors: ['No steps'] })
       .mockReturnValueOnce({ valid: true, errors: [] });
 
     const result = await service.plan('do something');
-    
+
     expect(result).toBeDefined();
     expect(result.planningMetadata?.validationResult).toBe('REPAIRED');
     expect(result.planningMetadata?.repairAttempts).toBe(1);
@@ -72,11 +82,15 @@ describe('WorkflowPlannerService', () => {
     inferenceMock.infer
       .mockResolvedValueOnce({ content: JSON.stringify({ steps: [] }) })
       .mockResolvedValueOnce({ content: JSON.stringify({ steps: [] }) });
-      
-    validatorMock.validate
-      .mockReturnValue({ valid: false, errors: ['No steps'] });
 
-    await expect(service.plan('do something')).rejects.toThrow('Workflow repair failed');
+    validatorMock.validate.mockReturnValue({
+      valid: false,
+      errors: ['No steps'],
+    });
+
+    await expect(service.plan('do something')).rejects.toThrow(
+      'Workflow repair failed',
+    );
     expect(inferenceMock.infer).toHaveBeenCalledTimes(2);
   });
 });

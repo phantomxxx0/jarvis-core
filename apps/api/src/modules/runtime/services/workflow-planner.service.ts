@@ -1,12 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { WorkflowDefinition, WorkflowPlanningMetadata } from '../contracts/workflow.dto';
+import {
+  WorkflowDefinition,
+  WorkflowPlanningMetadata,
+} from '../contracts/workflow.dto';
 import { InferenceService } from '../../workers/inference/services/inference.service';
 import { InferenceProviderType } from '../../workers/inference/enums/provider.enum';
 import { WorkflowValidatorService } from './workflow-validator.service';
 import { CapabilityRegistryService } from './capability-registry.service';
 
 export class WorkflowPlanningError extends Error {
-  constructor(message: string, public readonly metadata: WorkflowPlanningMetadata) {
+  constructor(
+    message: string,
+    public readonly metadata: WorkflowPlanningMetadata,
+  ) {
     super(message);
     this.name = 'WorkflowPlanningError';
   }
@@ -20,72 +26,98 @@ export class WorkflowPlannerService {
   constructor(
     private readonly inferenceService: InferenceService,
     private readonly validatorService: WorkflowValidatorService,
-    private readonly capabilityRegistry: CapabilityRegistryService
+    private readonly capabilityRegistry: CapabilityRegistryService,
   ) {}
 
-  public async plan(goal: string, provider: InferenceProviderType = InferenceProviderType.OLLAMA, model: string = 'llama3'): Promise<WorkflowDefinition> {
+  public async plan(
+    goal: string,
+    provider: InferenceProviderType = InferenceProviderType.OLLAMA,
+    model: string = 'llama3',
+  ): Promise<WorkflowDefinition> {
     const startTime = Date.now();
     let repairAttempts = 0;
-    
-    let metadata: WorkflowPlanningMetadata = {
+
+    const metadata: WorkflowPlanningMetadata = {
       provider,
       model,
       promptVersion: this.promptVersion,
       repairAttempts,
       validationResult: 'SUCCESS',
-      planningTimeMs: 0
+      planningTimeMs: 0,
     };
 
     try {
       const prompt = this.buildPrompt(goal);
       const response = await this.invokeLLM(provider, prompt, model);
       const parsedDefinition = this.parseResponse(response);
-      
+
       const validation = this.validatorService.validate(parsedDefinition);
-      
+
       if (!validation.valid) {
-        this.logger.warn(`Initial workflow validation failed: ${validation.errors.join(', ')}. Attempting repair...`);
+        this.logger.warn(
+          `Initial workflow validation failed: ${validation.errors.join(', ')}. Attempting repair...`,
+        );
         repairAttempts++;
         metadata.repairAttempts = repairAttempts;
-        
-        const repairPrompt = this.buildRepairPrompt(goal, response, validation.errors);
-        const repairResponse = await this.invokeLLM(provider, repairPrompt, model);
+
+        const repairPrompt = this.buildRepairPrompt(
+          goal,
+          response,
+          validation.errors,
+        );
+        const repairResponse = await this.invokeLLM(
+          provider,
+          repairPrompt,
+          model,
+        );
         const repairedDefinition = this.parseResponse(repairResponse);
-        
-        const repairValidation = this.validatorService.validate(repairedDefinition);
+
+        const repairValidation =
+          this.validatorService.validate(repairedDefinition);
         if (!repairValidation.valid) {
           metadata.validationResult = 'FAILED';
           metadata.planningTimeMs = Date.now() - startTime;
-          throw new WorkflowPlanningError(`Workflow repair failed: ${repairValidation.errors.join(', ')}`, metadata);
+          throw new WorkflowPlanningError(
+            `Workflow repair failed: ${repairValidation.errors.join(', ')}`,
+            metadata,
+          );
         }
-        
+
         metadata.validationResult = 'REPAIRED';
         repairedDefinition.planningMetadata = metadata;
-        repairedDefinition.planningMetadata.planningTimeMs = Date.now() - startTime;
+        repairedDefinition.planningMetadata.planningTimeMs =
+          Date.now() - startTime;
         return repairedDefinition;
       }
-      
+
       metadata.planningTimeMs = Date.now() - startTime;
       parsedDefinition.planningMetadata = metadata;
       return parsedDefinition;
-
-    } catch (e: any) {
+    } catch (e) {
       if (e instanceof WorkflowPlanningError) {
         throw e;
       }
-      
+
       metadata.validationResult = 'FAILED';
       metadata.planningTimeMs = Date.now() - startTime;
-      throw new WorkflowPlanningError(e.message || 'Unknown planning error', metadata);
+      const msg = e instanceof Error ? e.message : String(e);
+      throw new WorkflowPlanningError(
+        msg || 'Unknown planning error',
+        metadata,
+      );
     }
   }
 
   private buildPrompt(goal: string): string {
     const capabilities = this.capabilityRegistry.listCapabilities();
-    const capabilitiesJson = JSON.stringify(capabilities.map(c => ({
-      id: c.id,
-      description: c.description
-    })), null, 2);
+    const capabilitiesJson = JSON.stringify(
+      capabilities.map((c) => ({
+        id: c.id,
+        description: c.description,
+      })),
+      null,
+      2,
+    );
 
     return `You are a Workflow Planner for Jarvis.
 Your task is to convert a natural language goal into a Directed Acyclic Graph (DAG) workflow definition.
@@ -121,7 +153,11 @@ Example JSON:
 }`;
   }
 
-  private buildRepairPrompt(goal: string, previousResponse: string, errors: string[]): string {
+  private buildRepairPrompt(
+    goal: string,
+    previousResponse: string,
+    errors: string[],
+  ): string {
     return `You are a Workflow Planner for Jarvis.
 You previously generated a workflow definition that failed validation.
 
@@ -131,26 +167,34 @@ Previous Output:
 ${previousResponse}
 
 Validation Errors:
-${errors.map(e => `- ${e}`).join('\n')}
+${errors.map((e) => `- ${e}`).join('\n')}
 
 Fix the workflow definition and return ONLY the corrected valid JSON containing the "steps" array.`;
   }
 
-  private async invokeLLM(provider: InferenceProviderType, prompt: string, model: string): Promise<string> {
+  private async invokeLLM(
+    provider: InferenceProviderType,
+    prompt: string,
+    model: string,
+  ): Promise<string> {
     const response = await this.inferenceService.infer(provider, {
       modelId: model,
       prompt,
       maxTokens: 2000,
-      temperature: 0.1
+      temperature: 0.1,
     });
-    
+
     // Fallback if the payload is complex or text-based
     if (typeof response.content === 'string') {
       return response.content;
-    } else if (response.content && typeof response.content === 'object' && 'text' in (response.content as any)) {
-      return (response.content as any).text;
+    } else if (
+      response.content &&
+      typeof response.content === 'object' &&
+      'text' in (response.content as Record<string, unknown>)
+    ) {
+      return String((response.content as Record<string, unknown>).text);
     }
-    
+
     // In case the provider wraps it differently
     return JSON.stringify(response.content);
   }
@@ -158,15 +202,15 @@ Fix the workflow definition and return ONLY the corrected valid JSON containing 
   private parseResponse(response: string): WorkflowDefinition {
     // Strip markdown JSON wrappers if they exist
     let cleaned = response.trim();
-    if (cleaned.startsWith('\`\`\`json')) {
+    if (cleaned.startsWith('```json')) {
       cleaned = cleaned.substring(7);
-    } else if (cleaned.startsWith('\`\`\`')) {
+    } else if (cleaned.startsWith('```')) {
       cleaned = cleaned.substring(3);
     }
-    if (cleaned.endsWith('\`\`\`')) {
+    if (cleaned.endsWith('```')) {
       cleaned = cleaned.substring(0, cleaned.length - 3);
     }
-    
+
     try {
       return JSON.parse(cleaned) as WorkflowDefinition;
     } catch (e) {

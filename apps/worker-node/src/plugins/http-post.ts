@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WorkerCapability, WorkerContext } from "../sdk/worker-capability";
+import { WorkerCapability } from "../sdk/worker-capability";
 import { NetworkValidator } from "../utils/network-validator";
 
 const InputSchema = z.object({
@@ -20,10 +20,12 @@ export const httpPost: WorkerCapability = {
   version: "1.0.0",
   description: "Perform an HTTP POST request",
   category: "network",
-  inputSchema: InputSchema.toJSONSchema() as any,
-  outputSchema: OutputSchema.toJSONSchema() as any,
+  inputSchema:
+    InputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
+  outputSchema:
+    OutputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
 
-  async execute(input: unknown, _context: WorkerContext) {
+  async execute(input: unknown) {
     const parsed = InputSchema.parse(input);
 
     let bodyData: BodyInit | undefined;
@@ -51,10 +53,10 @@ export const httpPost: WorkerCapability = {
     });
 
     const contentType = response.headers.get("content-type") || "";
-    let data;
+    let data: unknown;
 
     if (contentType.includes("application/json")) {
-      data = await response.json();
+      data = (await response.json()) as unknown;
     } else {
       data = await response.text();
     }

@@ -6,7 +6,11 @@ import { WorkerWebSocketGateway } from './gateways/worker-websocket.gateway';
 import { RuntimeModule } from '../runtime/runtime.module';
 
 @Module({
-  imports: [EventEmitterModule.forRoot(), ScheduleModule.forRoot(), forwardRef(() => RuntimeModule)],
+  imports: [
+    EventEmitterModule.forRoot(),
+    ScheduleModule.forRoot(),
+    forwardRef(() => RuntimeModule),
+  ],
   providers: [ClusterManagerService, WorkerWebSocketGateway],
   exports: [ClusterManagerService],
 })

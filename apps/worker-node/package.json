@@ -9,7 +9,7 @@
     "start": "node dist/main.js",
     "dev": "tsx watch src/main.ts",
     "lint": "eslint \"src/**/*.ts\" --fix",
-    "test": "jest"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "dependencies": {
     "socket.io-client": "^4.7.5",

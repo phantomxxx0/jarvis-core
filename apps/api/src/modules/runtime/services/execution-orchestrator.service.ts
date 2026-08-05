@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { DatabaseService } from '../../../database';
 import { taskExecutions } from '@jarvis/database';
@@ -14,6 +14,25 @@ import {
   ExecutionCancelledEvent,
 } from '../events/execution.events';
 
+interface TaskRecord {
+  id: string;
+  userId: string;
+  capabilityId: string;
+  status: string;
+  input: unknown;
+  output: unknown;
+  error: unknown;
+  workerId: string | null;
+  progress: number;
+  attempts: number;
+  maxRetries: number;
+  timeoutMs: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+  startedAt: Date | null;
+  completedAt: Date | null;
+}
+
 @Injectable()
 export class ExecutionOrchestratorService {
   private readonly logger = new Logger(ExecutionOrchestratorService.name);
@@ -27,31 +46,44 @@ export class ExecutionOrchestratorService {
   async submitTask(
     userId: string,
     capabilityId: string,
-    input: any,
+    input: unknown,
     timeoutMs: number = 60000,
     maxRetries: number = 0,
   ): Promise<TaskExecution> {
-    const [record] = await this.database.db.insert(taskExecutions).values({
-      userId,
-      capabilityId,
-      input,
-      timeoutMs,
-      maxRetries,
-      status: 'PENDING',
-    }).returning();
+    const result = await this.database.db
+      .insert(taskExecutions)
+      .values({
+        userId,
+        capabilityId,
+        input,
+        timeoutMs,
+        maxRetries,
+        status: 'PENDING',
+      })
+      .returning();
+    const record = result[0] as unknown as TaskRecord;
 
-    this.logger.log(`Task ${record.id} submitted for capability ${capabilityId}`);
-    
-    this.eventEmitter.emit(ExecutionCreatedEvent.name, new ExecutionCreatedEvent(record.id));
+    this.logger.log(
+      `Task ${record.id} submitted for capability ${capabilityId}`,
+    );
+
+    this.eventEmitter.emit(
+      ExecutionCreatedEvent.name,
+      new ExecutionCreatedEvent(record.id),
+    );
 
     // Transition to QUEUED to kick off dispatch
     await this.updateStatus(record.id, TaskExecutionStatus.QUEUED);
-    
+
     return this.mapToDTO(record);
   }
 
   async getExecution(id: string): Promise<TaskExecution | null> {
-    const [record] = await this.database.db.select().from(taskExecutions).where(eq(taskExecutions.id, id));
+    const result = await this.database.db
+      .select()
+      .from(taskExecutions)
+      .where(eq(taskExecutions.id, id));
+    const record = result[0] as unknown as TaskRecord;
     if (!record) return null;
     return this.mapToDTO(record);
   }
@@ -65,8 +97,10 @@ export class ExecutionOrchestratorService {
   }
 
   async setRunning(id: string): Promise<void> {
-    await this.updateStatus(id, TaskExecutionStatus.RUNNING, { startedAt: new Date() });
-    
+    await this.updateStatus(id, TaskExecutionStatus.RUNNING, {
+      startedAt: new Date(),
+    });
+
     // Start dual timeout tracker
     const execution = await this.getExecution(id);
     if (execution && execution.timeoutMs) {
@@ -75,36 +109,54 @@ export class ExecutionOrchestratorService {
   }
 
   async updateProgress(id: string, progress: number): Promise<void> {
-    await this.database.db.update(taskExecutions).set({ progress, updatedAt: new Date() }).where(eq(taskExecutions.id, id));
-    this.eventEmitter.emit(ExecutionProgressEvent.name, new ExecutionProgressEvent(id, progress));
+    await this.database.db
+      .update(taskExecutions)
+      .set({ progress, updatedAt: new Date() })
+      .where(eq(taskExecutions.id, id));
+    this.eventEmitter.emit(
+      ExecutionProgressEvent.name,
+      new ExecutionProgressEvent(id, progress),
+    );
   }
 
-  async completeTask(id: string, output: any): Promise<void> {
+  async completeTask(id: string, output: unknown): Promise<void> {
     const execution = await this.getExecution(id);
     if (!execution || this.isTerminalState(execution.status)) return;
     this.stopTimeTracker(id);
-    await this.updateStatus(id, TaskExecutionStatus.SUCCESS, { output, completedAt: new Date(), progress: 100 });
+    await this.updateStatus(id, TaskExecutionStatus.SUCCESS, {
+      output,
+      completedAt: new Date(),
+      progress: 100,
+    });
   }
 
-  async failTask(id: string, error: any): Promise<void> {
+  async failTask(id: string, error: unknown): Promise<void> {
     const execution = await this.getExecution(id);
     if (!execution || this.isTerminalState(execution.status)) return;
-    
+
     this.stopTimeTracker(id);
 
     if (execution.attempts < execution.maxRetries) {
-      this.logger.warn(`Task ${id} failed (attempt ${execution.attempts}). Retrying...`);
-      await this.database.db.update(taskExecutions)
+      this.logger.warn(
+        `Task ${id} failed (attempt ${execution.attempts}). Retrying...`,
+      );
+      await this.database.db
+        .update(taskExecutions)
         .set({ attempts: execution.attempts + 1, error, updatedAt: new Date() })
         .where(eq(taskExecutions.id, id));
       await this.updateStatus(id, TaskExecutionStatus.RETRYING);
-      
+
       // Re-queue after brief delay
       setTimeout(() => {
-        this.updateStatus(id, TaskExecutionStatus.QUEUED);
+        this.updateStatus(id, TaskExecutionStatus.QUEUED).catch((e) =>
+          this.logger.error(`Failed to requeue task ${id}`, e),
+        );
       }, 1000);
     } else {
-      await this.updateStatus(id, TaskExecutionStatus.FAILED, { error, completedAt: new Date() });
+      await this.updateStatus(id, TaskExecutionStatus.FAILED, {
+        error,
+        completedAt: new Date(),
+      });
     }
   }
 
@@ -112,14 +164,19 @@ export class ExecutionOrchestratorService {
     const execution = await this.getExecution(id);
     if (!execution || this.isTerminalState(execution.status)) return;
     this.stopTimeTracker(id);
-    await this.updateStatus(id, TaskExecutionStatus.CANCELLED, { completedAt: new Date() });
+    await this.updateStatus(id, TaskExecutionStatus.CANCELLED, {
+      completedAt: new Date(),
+    });
   }
 
   async abortTask(id: string, reason: string): Promise<void> {
     const execution = await this.getExecution(id);
     if (!execution || this.isTerminalState(execution.status)) return;
     this.stopTimeTracker(id);
-    await this.updateStatus(id, TaskExecutionStatus.ABORTED, { error: { message: reason }, completedAt: new Date() });
+    await this.updateStatus(id, TaskExecutionStatus.ABORTED, {
+      error: { message: reason },
+      completedAt: new Date(),
+    });
   }
 
   private isTerminalState(status: TaskExecutionStatus): boolean {
@@ -128,15 +185,19 @@ export class ExecutionOrchestratorService {
       TaskExecutionStatus.FAILED,
       TaskExecutionStatus.CANCELLED,
       TaskExecutionStatus.ABORTED,
-      TaskExecutionStatus.TIMED_OUT
+      TaskExecutionStatus.TIMED_OUT,
     ].includes(status);
   }
 
   private startTimeTracker(id: string, timeoutMs: number) {
     this.stopTimeTracker(id);
-    const timeout = setTimeout(async () => {
-      this.logger.warn(`Task ${id} timed out after ${timeoutMs}ms (Core Enforcement)`);
-      await this.updateStatus(id, TaskExecutionStatus.TIMED_OUT, { completedAt: new Date() });
+    const timeout = setTimeout(() => {
+      this.logger.warn(
+        `Task ${id} timed out after ${timeoutMs}ms (Core Enforcement)`,
+      );
+      this.updateStatus(id, TaskExecutionStatus.TIMED_OUT, {
+        completedAt: new Date(),
+      }).catch((e) => this.logger.error(`Failed to timeout task ${id}`, e));
     }, timeoutMs);
     this.executionTimeouts.set(id, timeout);
   }
@@ -149,33 +210,56 @@ export class ExecutionOrchestratorService {
     }
   }
 
-  private async updateStatus(id: string, status: TaskExecutionStatus, extraFields: any = {}): Promise<void> {
-    await this.database.db.update(taskExecutions)
+  private async updateStatus(
+    id: string,
+    status: TaskExecutionStatus,
+    extraFields: Record<string, unknown> = {},
+  ): Promise<void> {
+    await this.database.db
+      .update(taskExecutions)
       .set({ status, updatedAt: new Date(), ...extraFields })
       .where(eq(taskExecutions.id, id));
-      
+
     this.logger.log(`Task ${id} -> ${status}`);
     const updated = await this.getExecution(id);
-    
+
     // Also emit the old dynamic event for backward-compatibility with generic listeners like TaskDispatcherService
     this.eventEmitter.emit(`TaskExecution.${status}`, updated);
 
     if (updated) {
       if (status === TaskExecutionStatus.RUNNING) {
-        this.eventEmitter.emit(ExecutionStartedEvent.name, new ExecutionStartedEvent(id));
+        this.eventEmitter.emit(
+          ExecutionStartedEvent.name,
+          new ExecutionStartedEvent(id),
+        );
       } else if (status === TaskExecutionStatus.SUCCESS) {
-        this.eventEmitter.emit(ExecutionCompletedEvent.name, new ExecutionCompletedEvent(id, updated.output));
-      } else if (status === TaskExecutionStatus.FAILED || status === TaskExecutionStatus.ABORTED) {
-        this.eventEmitter.emit(ExecutionFailedEvent.name, new ExecutionFailedEvent(id, updated.error));
+        this.eventEmitter.emit(
+          ExecutionCompletedEvent.name,
+          new ExecutionCompletedEvent(id, updated.output),
+        );
+      } else if (
+        status === TaskExecutionStatus.FAILED ||
+        status === TaskExecutionStatus.ABORTED
+      ) {
+        this.eventEmitter.emit(
+          ExecutionFailedEvent.name,
+          new ExecutionFailedEvent(id, updated.error),
+        );
       } else if (status === TaskExecutionStatus.TIMED_OUT) {
-        this.eventEmitter.emit(ExecutionTimedOutEvent.name, new ExecutionTimedOutEvent(id));
+        this.eventEmitter.emit(
+          ExecutionTimedOutEvent.name,
+          new ExecutionTimedOutEvent(id),
+        );
       } else if (status === TaskExecutionStatus.CANCELLED) {
-        this.eventEmitter.emit(ExecutionCancelledEvent.name, new ExecutionCancelledEvent(id));
+        this.eventEmitter.emit(
+          ExecutionCancelledEvent.name,
+          new ExecutionCancelledEvent(id),
+        );
       }
     }
   }
 
-  private mapToDTO(record: any): TaskExecution {
+  private mapToDTO(record: TaskRecord): TaskExecution {
     return {
       id: record.id,
       userId: record.userId,
@@ -184,15 +268,15 @@ export class ExecutionOrchestratorService {
       input: record.input,
       output: record.output,
       error: record.error,
-      workerId: record.workerId,
+      workerId: record.workerId || undefined,
       progress: record.progress,
       attempts: record.attempts,
       maxRetries: record.maxRetries,
-      timeoutMs: record.timeoutMs,
+      timeoutMs: record.timeoutMs || undefined,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
-      startedAt: record.startedAt,
-      completedAt: record.completedAt,
+      startedAt: record.startedAt || undefined,
+      completedAt: record.completedAt || undefined,
     };
   }
 }

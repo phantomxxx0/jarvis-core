@@ -21,7 +21,13 @@ import { DatabaseModule } from '../../database/database.module';
 import { InferenceModule } from '../workers/inference/inference.module';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), RegistryModule, ObservationModule, DatabaseModule, InferenceModule],
+  imports: [
+    ScheduleModule.forRoot(),
+    RegistryModule,
+    ObservationModule,
+    DatabaseModule,
+    InferenceModule,
+  ],
   controllers: [RuntimeController],
   providers: [
     RuntimeRegistryService,

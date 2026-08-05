@@ -1,0 +1,182 @@
+$ eslint "src/**/*.ts" --fix
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/execution/plugin-loader.ts
+  26:13  error    Unsafe assignment of an `any` value                                                                             @typescript-eslint/no-unsafe-assignment
+  26:22  error    A `require()` style import is forbidden                                                                         @typescript-eslint/no-require-imports
+  27:20  error    'reqErr' is defined but never used                                                                              @typescript-eslint/no-unused-vars
+  29:13  error    Unsafe assignment of an `any` value                                                                             @typescript-eslint/no-unsafe-assignment
+  46:23  error    Unsafe member access .default on an `any` value                                                                 @typescript-eslint/no-unsafe-member-access
+  46:49  warning  Unsafe argument of type `any` assigned to a parameter of type `ArrayLike<unknown> | { [s: string]: unknown; }`  @typescript-eslint/no-unsafe-argument
+  78:14  error    Unsafe member access .id on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  78:25  error    Unsafe member access .execute on an `any` value                                                                 @typescript-eslint/no-unsafe-member-access
+  82:22  error    Unsafe member access [field] on an `any` value                                                                  @typescript-eslint/no-unsafe-member-access
+  84:93  error    Unsafe member access .id on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  89:20  error    Unsafe member access .execute on an `any` value                                                                 @typescript-eslint/no-unsafe-member-access
+  91:73  error    Unsafe member access .id on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+  95:14  error    Unsafe member access .inputSchema on an `any` value                                                             @typescript-eslint/no-unsafe-member-access
+  97:68  error    Unsafe member access .id on an `any` value                                                                      @typescript-eslint/no-unsafe-member-access
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/docker-compose.ts
+  28:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/docker-exec.ts
+  28:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/docker-inspect.ts
+  22:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+  35:7   error  Unsafe assignment of an `any` value   @typescript-eslint/no-unsafe-assignment
+  40:14  error  Unsafe assignment of an `any` value   @typescript-eslint/no-unsafe-assignment
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/docker-logs.ts
+  27:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/docker-ps.ts
+  26:33  error  '_context' is defined but never used    @typescript-eslint/no-unused-vars
+  45:11  error  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/echo-plugin.ts
+   8:20  error  'config' is defined but never used                @typescript-eslint/no-unused-vars
+  10:3   error  Async method 'health' has no 'await' expression   @typescript-eslint/require-await
+  16:16  error  'executionId' is defined but never used           @typescript-eslint/no-unused-vars
+  18:3   error  Async method 'execute' has no 'await' expression  @typescript-eslint/require-await
+  18:32  error  'context' is defined but never used               @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/filesystem-copy.ts
+  26:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/filesystem-delete.ts
+  23:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/filesystem-list.ts
+  32:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/filesystem-mkdir.ts
+  23:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/filesystem-move.ts
+  26:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/filesystem-read.ts
+  26:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/filesystem-search.ts
+  25:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/filesystem-stat.ts
+  27:33  error  '_context' is defined but never used    @typescript-eslint/no-unused-vars
+  29:5   error  Unsafe return of a value of type `any`  @typescript-eslint/no-unsafe-return
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/filesystem-write.ts
+  26:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/git-branch.ts
+  24:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/git-checkout.ts
+  26:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/git-clone.ts
+   5:13  error  'path' is defined but never used      @typescript-eslint/no-unused-vars
+  28:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+  35:13  error  Empty block statement                 no-empty
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/git-commit.ts
+  30:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/git-diff.ts
+  25:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/git-fetch.ts
+  25:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/git-log.ts
+  31:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/git-merge.ts
+  25:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/git-pull.ts
+  27:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/git-push.ts
+  27:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/git-reset.ts
+  26:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/git-status.ts
+  28:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/http-download.ts
+  33:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+  41:13  error  Empty block statement                 no-empty
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/http-get.ts
+  25:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+  39:7   error  Unsafe assignment of an `any` value   @typescript-eslint/no-unsafe-assignment
+  52:7   error  Unsafe assignment of an `any` value   @typescript-eslint/no-unsafe-assignment
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/http-post.ts
+  26:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+  57:7   error  Unsafe assignment of an `any` value   @typescript-eslint/no-unsafe-assignment
+  70:7   error  Unsafe assignment of an `any` value   @typescript-eslint/no-unsafe-assignment
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/http-upload.ts
+  35:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+  65:7   error  Unsafe assignment of an `any` value   @typescript-eslint/no-unsafe-assignment
+  78:7   error  Unsafe assignment of an `any` value   @typescript-eslint/no-unsafe-assignment
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/node-exec.ts
+  29:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/process-kill.ts
+  22:3   error  Async method 'execute' has no 'await' expression  @typescript-eslint/require-await
+  22:33  error  '_context' is defined but never used              @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/process-list.ts
+  28:3   error  Async method 'execute' has no 'await' expression  @typescript-eslint/require-await
+  28:33  error  '_context' is defined but never used              @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/process-spawn.ts
+  28:3   error  Async method 'execute' has no 'await' expression  @typescript-eslint/require-await
+  28:33  error  '_context' is defined but never used              @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/process-wait.ts
+  24:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/python-exec.ts
+  29:33  error  '_context' is defined but never used          @typescript-eslint/no-unused-vars
+  47:15  error  Unsafe member access .code on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/shell-exec.ts
+  28:33  error  '_context' is defined but never used  @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/plugins/system-info.ts
+  71:3  error  Async method 'execute' has no 'await' expression  @typescript-eslint/require-await
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/services/filesystem-sandbox.ts
+    1:13  error  'fs' is defined but never used       @typescript-eslint/no-unused-vars
+   86:20  error  'statErr' is defined but never used  @typescript-eslint/no-unused-vars
+   90:16  error  'err' is defined but never used      @typescript-eslint/no-unused-vars
+  196:16  error  'err' is defined but never used      @typescript-eslint/no-unused-vars
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/services/process-manager.ts
+   62:24  error  'err' is defined but never used                   @typescript-eslint/no-unused-vars
+   91:18  error  'e' is defined but never used                     @typescript-eslint/no-unused-vars
+  113:11  error  'timer' is never reassigned. Use 'const' instead  prefer-const
+  134:17  error  Empty block statement                             no-empty
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/utils/network-validator.ts
+  77:15  error  Unsafe member access .name on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+/opt/ai-stack/jarvis-core/apps/worker-node/src/utils/process-runner.ts
+  28:19  error  Unsafe call of an `any` typed value               @typescript-eslint/no-unsafe-call
+  28:24  error  Unsafe member access .toString on an `any` value  @typescript-eslint/no-unsafe-member-access
+  32:19  error  Unsafe call of an `any` typed value               @typescript-eslint/no-unsafe-call
+  32:24  error  Unsafe member access .toString on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+✖ 87 problems (86 errors, 1 warning)
+
+/opt/ai-stack/jarvis-core/apps/worker-node:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] worker-node@1.0.0 lint: `eslint "src/**/*.ts" --fix`
+Exit status 1

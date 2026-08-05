@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { WorkerCapability, WorkerContext } from "../sdk/worker-capability";
+import { WorkerCapability } from "../sdk/worker-capability";
 import { sandbox } from "../services/filesystem-sandbox";
 import { ProcessRunner } from "../utils/process-runner";
 import * as fsp from "fs/promises";
@@ -23,10 +23,12 @@ export const pythonExec: WorkerCapability = {
   version: "1.0.0",
   description: "Execute Python script securely within the sandbox",
   category: "developer",
-  inputSchema: InputSchema.toJSONSchema() as any,
-  outputSchema: OutputSchema.toJSONSchema() as any,
+  inputSchema:
+    InputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
+  outputSchema:
+    OutputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
 
-  async execute(input: unknown, _context: WorkerContext) {
+  async execute(input: unknown) {
     const parsed = InputSchema.parse(input);
     const safeCwd = sandbox.resolveSafePath(parsed.cwd);
 
@@ -43,8 +45,13 @@ export const pythonExec: WorkerCapability = {
         timeoutMs: parsed.timeoutMs,
       });
       return result;
-    } catch (err: any) {
-      if (err.code === "ENOENT") {
+    } catch (err: unknown) {
+      if (
+        err &&
+        typeof err === "object" &&
+        "code" in err &&
+        err.code === "ENOENT"
+      ) {
         // Fallback to 'python' if 'python3' doesn't exist
         const result = await ProcessRunner.run("python", [tempFile], {
           cwd: safeCwd,

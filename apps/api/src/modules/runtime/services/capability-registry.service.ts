@@ -55,43 +55,53 @@ export class CapabilityRegistryService {
 
   public registerWorker(manifest: ClusterManifest): void {
     if (!manifest.worker) {
-      this.logger.debug('Worker registration without worker manifest. Skipping capability indexing.');
+      this.logger.debug(
+        'Worker registration without worker manifest. Skipping capability indexing.',
+      );
       return;
     }
 
     // Validation
     const workerValidation = workerSchema.safeParse(manifest.worker);
     if (!workerValidation.success) {
-      this.logger.error(`Malformed worker manifest: ${workerValidation.error.message}`);
+      this.logger.error(
+        `Malformed worker manifest: ${workerValidation.error.message}`,
+      );
       throw new Error('Malformed worker manifest');
     }
 
     const worker = workerValidation.data;
-    
+
     // Disconnect old worker if it exists
     if (this.workers.has(worker.id)) {
-      this.logger.log(`Worker ${worker.id} reconnecting. Cleaning up old state.`);
+      this.logger.log(
+        `Worker ${worker.id} reconnecting. Cleaning up old state.`,
+      );
       this.unregisterWorker(worker.id);
     }
 
     let capabilityIds: string[] = [];
 
     if (manifest.capabilities) {
-      const capabilitiesValidation = z.array(capabilitySchema).safeParse(manifest.capabilities);
+      const capabilitiesValidation = z
+        .array(capabilitySchema)
+        .safeParse(manifest.capabilities);
       if (!capabilitiesValidation.success) {
-        this.logger.error(`Malformed capabilities manifest: ${capabilitiesValidation.error.message}`);
+        this.logger.error(
+          `Malformed capabilities manifest: ${capabilitiesValidation.error.message}`,
+        );
         throw new Error('Malformed capabilities manifest');
       }
 
       const caps = capabilitiesValidation.data;
 
       // Check for duplicate capability IDs within this worker
-      const uniqueIds = new Set(caps.map(c => c.id));
+      const uniqueIds = new Set(caps.map((c) => c.id));
       if (uniqueIds.size !== caps.length) {
         throw new Error('Duplicate capability IDs within a single worker');
       }
 
-      capabilityIds = caps.map(c => c.id);
+      capabilityIds = caps.map((c) => c.id);
 
       // Register capabilities
       for (const cap of caps) {
@@ -115,7 +125,9 @@ export class CapabilityRegistryService {
       capabilityIds,
     });
 
-    this.logger.log(`Registered worker ${worker.id} with ${capabilityIds.length} capabilities`);
+    this.logger.log(
+      `Registered worker ${worker.id} with ${capabilityIds.length} capabilities`,
+    );
   }
 
   public unregisterWorker(workerId: string): void {
@@ -136,7 +148,9 @@ export class CapabilityRegistryService {
     }
 
     this.workers.delete(workerId);
-    this.logger.log(`Unregistered worker ${workerId} and released capability indexes`);
+    this.logger.log(
+      `Unregistered worker ${workerId} and released capability indexes`,
+    );
   }
 
   public updateHeartbeat(workerId: string): void {
@@ -151,7 +165,11 @@ export class CapabilityRegistryService {
     return this.workers.get(workerId);
   }
 
-  public getCapability(capabilityId: string): Omit<CapabilityRecord, 'workerIds'> & { workerIds: string[] } | undefined {
+  public getCapability(
+    capabilityId: string,
+  ):
+    | (Omit<CapabilityRecord, 'workerIds'> & { workerIds: string[] })
+    | undefined {
     const cap = this.capabilities.get(capabilityId);
     if (!cap) return undefined;
     return {
@@ -164,8 +182,10 @@ export class CapabilityRegistryService {
     return Array.from(this.workers.values());
   }
 
-  public listCapabilities(): (Omit<CapabilityRecord, 'workerIds'> & { workerIds: string[] })[] {
-    return Array.from(this.capabilities.values()).map(cap => ({
+  public listCapabilities(): (Omit<CapabilityRecord, 'workerIds'> & {
+    workerIds: string[];
+  })[] {
+    return Array.from(this.capabilities.values()).map((cap) => ({
       ...cap,
       workerIds: Array.from(cap.workerIds),
     }));

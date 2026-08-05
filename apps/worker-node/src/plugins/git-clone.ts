@@ -1,8 +1,7 @@
 import { z } from "zod";
-import { WorkerCapability, WorkerContext } from "../sdk/worker-capability";
+import { WorkerCapability } from "../sdk/worker-capability";
 import { sandbox } from "../services/filesystem-sandbox";
 import { ProcessRunner } from "../utils/process-runner";
-import * as path from "path";
 import * as fsp from "fs/promises";
 
 const InputSchema = z.object({
@@ -22,17 +21,22 @@ export const gitClone: WorkerCapability = {
   version: "1.0.0",
   description: "Clone a repository into a new directory",
   category: "developer",
-  inputSchema: InputSchema.toJSONSchema() as any,
-  outputSchema: OutputSchema.toJSONSchema() as any,
+  inputSchema:
+    InputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
+  outputSchema:
+    OutputSchema.toJSONSchema() as unknown as import("json-schema").JSONSchema7,
 
-  async execute(input: unknown, _context: WorkerContext) {
+  async execute(input: unknown) {
     const parsed = InputSchema.parse(input);
     const safeCwd = sandbox.resolveSafePath(parsed.cwd);
 
     // Create cwd if it does not exist so we can clone into it
     try {
       await fsp.mkdir(safeCwd, { recursive: true });
-    } catch {}
+    } catch (err) {
+      // Ignore if directory already exists
+      void err;
+    }
 
     const args = ["clone", parsed.url];
     if (parsed.directory) {

@@ -6,7 +6,7 @@ import * as path from 'path';
 import { WorkflowEngineService } from '../src/modules/runtime/services/workflow-engine.service';
 import { WorkflowPlannerService } from '../src/modules/runtime/services/workflow-planner.service';
 import { CapabilityRegistryService } from '../src/modules/registry/capability-registry.service';
-import { InferenceService } from '../src/modules/workers/inference/services/inference.service';
+
 import { DatabaseService } from '../src/database/database.service';
 import { users, workflowExecutions } from '@jarvis/database';
 import { randomUUID } from 'crypto';
@@ -20,7 +20,7 @@ describe('End-to-End Smoke Test Pipeline (e2e)', () => {
   let workerProcess: ChildProcess;
   let workflowEngine: WorkflowEngineService;
   let workflowPlanner: WorkflowPlannerService;
-  let inferenceService: InferenceService;
+
   let db: DatabaseService;
   let testUserId: string;
 
@@ -31,13 +31,13 @@ describe('End-to-End Smoke Test Pipeline (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     await app.init();
-    
+
     // Start Nest HTTP server on a specific port for the worker to connect to
     await app.listen(4002); // 4002 to avoid conflicts if another runs on 4001
 
     workflowEngine = app.get(WorkflowEngineService);
     workflowPlanner = app.get(WorkflowPlannerService);
-    inferenceService = app.get(InferenceService);
+
     db = app.get(DatabaseService);
 
     testUserId = randomUUID();
@@ -45,36 +45,55 @@ describe('End-to-End Smoke Test Pipeline (e2e)', () => {
       id: testUserId,
       email: `${testUserId}@smoke.com`,
       passwordHash: 'dummy',
-      role: 'USER'
+      role: 'USER',
     });
 
     // Spawn the worker node process
-    const workerPath = path.resolve(__dirname, '../../worker-node/dist/main.js');
+    const workerPath = path.resolve(
+      __dirname,
+      '../../worker-node/dist/main.js',
+    );
     workerProcess = spawn('node', [workerPath], {
       env: {
         ...process.env,
         CORE_SERVER_URL: 'ws://localhost:4002/cluster',
       },
-      stdio: 'pipe'
+      stdio: 'pipe',
     });
 
-    workerProcess.stdout?.on('data', (data) => console.log(`Worker stdout: ${data}`));
-    workerProcess.stderr?.on('data', (data) => console.error(`Worker stderr: ${data}`));
+    workerProcess.stdout?.on('data', (data) =>
+      console.log(`Worker stdout: ${data}`),
+    );
+    workerProcess.stderr?.on('data', (data) =>
+      console.error(`Worker stderr: ${data}`),
+    );
 
     // Wait for the worker to fully register and capabilities to load
     for (let i = 0; i < 30; i++) {
       const registry = app.get(CapabilityRegistryService);
       const caps = registry.getAllDefinitions();
-      if (caps.find(c => c.id === 'system.info') && caps.find(c => c.id === 'process.spawn')) {
+      if (
+        caps.find((c) => c.id === 'system.info') &&
+        caps.find((c) => c.id === 'process.spawn')
+      ) {
         break;
       }
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   });
 
   afterAll(async () => {
     if (workerProcess) {
-      workerProcess.kill('SIGTERM');
+      // Wait for the child to fully exit so its piped stdio streams close
+      await new Promise<void>((resolve) => {
+        workerProcess.once('exit', () => resolve());
+        workerProcess.kill('SIGTERM');
+        // Safety timeout in case the signal is ignored
+        setTimeout(() => {
+          workerProcess.kill('SIGKILL');
+          resolve();
+        }, 3000).unref();
+      });
     }
     // Delete test user to clean up DB
     await db.db.delete(users).where(eq(users.id, testUserId));
@@ -89,7 +108,7 @@ describe('End-to-End Smoke Test Pipeline (e2e)', () => {
           id: 'step_info',
           capabilityId: 'system.info',
           input: {},
-          dependencies: []
+          dependencies: [],
         },
         {
           id: 'step_write',
@@ -97,87 +116,115 @@ describe('End-to-End Smoke Test Pipeline (e2e)', () => {
           input: {
             path: 'smoke-test-file.txt',
             content: 'hello from workflow',
-            overwrite: true
+            overwrite: true,
           },
-          dependencies: []
+          dependencies: [],
         },
         {
           id: 'step_read',
           capabilityId: 'filesystem.read',
           input: {
-            path: 'smoke-test-file.txt'
+            path: 'smoke-test-file.txt',
           },
-          dependencies: ['step_write']
+          dependencies: ['step_write'],
         },
         {
           id: 'step_git',
           capabilityId: 'git.status',
           input: {
-            cwd: '.'
+            cwd: '.',
           },
-          dependencies: []
+          dependencies: [],
         },
         {
           id: 'step_http',
           capabilityId: 'http.get',
           input: {
-            url: 'https://example.com'
+            url: 'https://example.com',
           },
-          dependencies: []
+          dependencies: [],
         },
         {
           id: 'step_spawn',
           capabilityId: 'process.spawn',
           input: {
             command: 'echo',
-            args: ['hello world']
+            args: ['hello world'],
           },
-          dependencies: []
+          dependencies: [],
         },
         {
           id: 'step_wait',
           capabilityId: 'process.wait',
           input: {
-            processId: '${step_spawn.output.processId}'
+            processId: '${step_spawn.output.processId}',
           },
-          dependencies: ['step_spawn']
-        }
-      ]
+          dependencies: ['step_spawn'],
+        },
+      ],
     });
 
-    (workflowPlanner as any).invokeLLM = jest.fn().mockResolvedValue(mockWorkflowJson);
+    jest
+      .spyOn(
+        workflowPlanner as unknown as {
+          invokeLLM: (system: string, user: string) => Promise<string>;
+        },
+        'invokeLLM',
+      )
+      .mockResolvedValue(mockWorkflowJson);
     // 2. Plan the workflow
-    const goal = "Perform a smoke test with system.info, files, git, http, and processes";
+    const goal =
+      'Perform a smoke test with system.info, files, git, http, and processes';
     const definition = await workflowPlanner.plan(goal);
 
     expect(definition.steps).toHaveLength(7);
     expect(definition.planningMetadata?.validationResult).toBe('SUCCESS');
 
     // 3. Submit workflow to engine
-    const executionDto = await workflowEngine.submitWorkflow(testUserId, definition, 'Smoke Test Workflow');
+    const executionDto = await workflowEngine.submitWorkflow(
+      testUserId,
+      definition,
+      'Smoke Test Workflow',
+    );
 
     // 4. Wait for workflow to finish
     let isComplete = false;
     let finalStatus: WorkflowExecutionStatus = WorkflowExecutionStatus.PENDING;
-    let finalState: any = {};
-    
+    let finalState: Record<string, { status: string; output?: unknown }> = {};
+
     for (let i = 0; i < 60; i++) {
-      const [record] = await db.db.select().from(workflowExecutions).where(eq(workflowExecutions.id, executionDto.id));
-      if (record && (record.status === WorkflowExecutionStatus.SUCCESS || record.status === WorkflowExecutionStatus.FAILED)) {
+      const [record] = await db.db
+        .select()
+        .from(workflowExecutions)
+        .where(eq(workflowExecutions.id, executionDto.id));
+      if (
+        (record &&
+          (record.status as WorkflowExecutionStatus) ===
+            WorkflowExecutionStatus.SUCCESS) ||
+        (record.status as WorkflowExecutionStatus) ===
+          WorkflowExecutionStatus.FAILED
+      ) {
         isComplete = true;
         finalStatus = record.status as WorkflowExecutionStatus;
-        finalState = record.state;
+        finalState =
+          (record.state as Record<
+            string,
+            { status: string; output?: unknown }
+          >) || {};
         break;
       }
-      await new Promise(res => setTimeout(res, 500));
+      await new Promise((res) => setTimeout(res, 500));
     }
 
     expect(isComplete).toBe(true);
     if (finalStatus !== WorkflowExecutionStatus.SUCCESS) {
-      console.log('Workflow failed! Final state:', JSON.stringify(finalState, null, 2));
+      console.log(
+        'Workflow failed! Final state:',
+        JSON.stringify(finalState, null, 2),
+      );
     }
     expect(finalStatus).toBe(WorkflowExecutionStatus.SUCCESS);
-    
+
     // Assert all steps reached SUCCESS
     expect(finalState['step_info'].status).toBe('SUCCESS');
     expect(finalState['step_write'].status).toBe('SUCCESS');
@@ -186,8 +233,10 @@ describe('End-to-End Smoke Test Pipeline (e2e)', () => {
     expect(finalState['step_http'].status).toBe('SUCCESS');
     expect(finalState['step_spawn'].status).toBe('SUCCESS');
     expect(finalState['step_wait'].status).toBe('SUCCESS');
-    
+
     // Validate variable propagation
-    expect(finalState['step_wait'].output?.exitCode).toBe(0);
+    const stepWaitOutput = finalState['step_wait']?.output as
+      { exitCode?: number } | undefined;
+    expect(stepWaitOutput?.exitCode).toBe(0);
   });
 });
