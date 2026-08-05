@@ -1,0 +1,200 @@
+    Worker stdout: Execution successful
+
+      at Socket.<anonymous> (smoke.e2e-spec.ts:61:56)
+
+  console.log
+    Worker stdout: Sending ResultEnvelope
+
+      at Socket.<anonymous> (smoke.e2e-spec.ts:61:56)
+
+  console.log
+    Workflow failed! Final state: {
+      "step_git": {
+        "output": {
+          "added": [],
+          "ahead": 0,
+          "behind": 0,
+          "branch": "refactor/code-quality",
+          "modified": [
+            "pps/api/package.json",
+            "apps/api/src/modules/cluster/gateways/worker-websocket.gateway.ts",
+            "apps/api/src/modules/runtime/runtime.module.ts",
+            "apps/api/src/modules/users/users.controller.ts",
+            "apps/api/src/modules/users/users.module.ts",
+            "apps/api/test/app.e2e-spec.ts",
+            "apps/worker-node/package.json",
+            "apps/worker-node/src/execution/plugin-loader.ts",
+            "apps/worker-node/src/main.ts",
+            "apps/worker-node/src/plugins/echo-plugin.ts",
+            "apps/worker-node/src/plugins/system-info.ts",
+            "apps/worker-node/src/runtime/jarvis-worker-runtime.ts",
+            "apps/worker-node/src/sdk/worker-capability.ts",
+            "packages/database/migrations/meta/_journal.json",
+            "packages/database/src/schema/index.ts",
+            "pnpm-lock.yaml"
+          ],
+          "untracked": [
+            "apps/api/smoke-test-file.txt",
+            "apps/api/src/modules/runtime/contracts/execution-transport.interface.ts",
+            "apps/api/src/modules/runtime/contracts/execution.dto.ts",
+            "apps/api/src/modules/runtime/contracts/workflow.dto.ts",
+            "apps/api/src/modules/runtime/events/execution.events.ts",
+            "apps/api/src/modules/runtime/services/execution-orchestrator.service.spec.ts",
+            "apps/api/src/modules/runtime/services/execution-orchestrator.service.ts",
+            "apps/api/src/modules/runtime/services/task-dispatcher.service.ts",
+            "apps/api/src/modules/runtime/services/workflow-engine.service.spec.ts",
+            "apps/api/src/modules/runtime/services/workflow-engine.service.ts",
+            "apps/api/src/modules/runtime/services/workflow-planner.service.spec.ts",
+            "apps/api/src/modules/runtime/services/workflow-planner.service.ts",
+            "apps/api/src/modules/runtime/services/workflow-validator.service.spec.ts",
+            "apps/api/src/modules/runtime/services/workflow-validator.service.ts",
+            "apps/api/test/pipeline.e2e-spec.ts",
+            "apps/api/test/smoke.e2e-spec.ts",
+            "apps/worker-node/src/plugins/developer/",
+            "apps/worker-node/src/plugins/docker-compose.ts",
+            "apps/worker-node/src/plugins/docker-exec.ts",
+            "apps/worker-node/src/plugins/docker-inspect.ts",
+            "apps/worker-node/src/plugins/docker-logs.ts",
+            "apps/worker-node/src/plugins/docker-ps.ts",
+            "apps/worker-node/src/plugins/filesystem-copy.ts",
+            "apps/worker-node/src/plugins/filesystem-delete.ts",
+            "apps/worker-node/src/plugins/filesystem-list.ts",
+            "apps/worker-node/src/plugins/filesystem-mkdir.ts",
+            "apps/worker-node/src/plugins/filesystem-move.ts",
+            "apps/worker-node/src/plugins/filesystem-read.ts",
+            "apps/worker-node/src/plugins/filesystem-search.ts",
+            "apps/worker-node/src/plugins/filesystem-stat.ts",
+            "apps/worker-node/src/plugins/filesystem-write.ts",
+            "apps/worker-node/src/plugins/filesystem/",
+            "apps/worker-node/src/plugins/git-branch.ts",
+            "apps/worker-node/src/plugins/git-checkout.ts",
+            "apps/worker-node/src/plugins/git-clone.ts",
+            "apps/worker-node/src/plugins/git-commit.ts",
+            "apps/worker-node/src/plugins/git-diff.ts",
+            "apps/worker-node/src/plugins/git-fetch.ts",
+            "apps/worker-node/src/plugins/git-log.ts",
+            "apps/worker-node/src/plugins/git-merge.ts",
+            "apps/worker-node/src/plugins/git-pull.ts",
+            "apps/worker-node/src/plugins/git-push.ts",
+            "apps/worker-node/src/plugins/git-reset.ts",
+            "apps/worker-node/src/plugins/git-status.ts",
+            "apps/worker-node/src/plugins/http-download.ts",
+            "apps/worker-node/src/plugins/http-get.ts",
+            "apps/worker-node/src/plugins/http-post.ts",
+            "apps/worker-node/src/plugins/http-upload.ts",
+            "apps/worker-node/src/plugins/node-exec.ts",
+            "apps/worker-node/src/plugins/process-kill.ts",
+            "apps/worker-node/src/plugins/process-list.ts",
+            "apps/worker-node/src/plugins/process-spawn.ts",
+            "apps/worker-node/src/plugins/process-wait.ts",
+            "apps/worker-node/src/plugins/python-exec.ts",
+            "apps/worker-node/src/plugins/shell-exec.ts",
+            "apps/worker-node/src/services/",
+            "apps/worker-node/src/utils/",
+            "apps/worker-node/test-zod.ts",
+            "apps/worker-node/test-zod2.ts",
+            "apps/worker-node/test-zod3.ts",
+            "apps/worker-node/tests/plugins/developer.spec.ts",
+            "apps/worker-node/tests/plugins/docker.spec.ts",
+            "apps/worker-node/tests/plugins/filesystem.spec.ts",
+            "apps/worker-node/tests/plugins/http.spec.ts",
+            "apps/worker-node/tests/plugins/process.spec.ts",
+            "apps/worker-node/tests/services/",
+            "fix-schemas-2.js",
+            "fix-schemas.js",
+            "packages/database/migrations/0007_steep_iron_fist.sql",
+            "packages/database/migrations/0008_dear_gargoyle.sql",
+            "packages/database/migrations/meta/0007_snapshot.json",
+            "packages/database/migrations/meta/0008_snapshot.json",
+            "packages/database/src/schema/task-executions.ts",
+            "packages/database/src/schema/workflow-executions.ts"
+          ]
+        },
+        "status": "SUCCESS",
+        "taskId": "5369c68f-6949-4ea3-895a-02887a05f125"
+      },
+      "step_http": {
+        "output": {
+          "data": "<!doctype html><html lang=\"en\"><head><title>Example Domain</title><link rel=\"icon\" href=\"data:,\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>body{background:#eee;width:60vw;margin:15vh auto;font-family:system-ui,sans-serif}h1{font-size:1.5em}div{opacity:0.8}a:link,a:visited{color:#348}</style></head><body><div><h1>Example Domain</h1><p>This domain is for use in documentation examples without needing permission. Avoid use in operations.</p><p><a href=\"https://iana.org/domains/example\">Learn more</a></p></div></body></html>\n",
+          "status": 200,
+          "headers": {
+            "age": "14391",
+            "date": "Tue, 04 Aug 2026 23:32:54 GMT",
+            "allow": "GET, HEAD",
+            "cf-ray": "a2615d2eaea67a0d-PAT",
+            "server": "cloudflare",
+            "connection": "keep-alive",
+            "content-type": "text/html",
+            "last-modified": "Mon, 03 Aug 2026 20:45:47 GMT",
+            "cf-cache-status": "HIT",
+            "content-encoding": "br",
+            "transfer-encoding": "chunked"
+          }
+        },
+        "status": "SUCCESS",
+        "taskId": "838e9f83-8c75-46e1-ae36-97a72b00afd7"
+      },
+      "step_info": {
+        "status": "RUNNING",
+        "taskId": "1622b8a3-3192-40dc-a29b-bad8761f560b"
+      },
+      "step_read": {
+        "status": "PENDING"
+      },
+      "step_wait": {
+        "status": "RUNNING",
+        "taskId": "023279d9-ff83-4e21-a1ae-dff0655d8f1c"
+      },
+      "step_spawn": {
+        "output": {
+          "processId": "46d84735-3f3b-4fdd-99a8-531285b59213"
+        },
+        "status": "SUCCESS",
+        "taskId": "bd912c28-2284-4c06-9e7b-fa43523500a0"
+      },
+      "step_write": {
+        "status": "RUNNING",
+        "taskId": "c12af773-b7b9-42f6-aa8a-a544abf042c2"
+      }
+    }
+
+      at Object.<anonymous> (smoke.e2e-spec.ts:176:15)
+
+  console.log
+    Worker stdout:          
+    Gracefully shutting down from SIGTERM
+    [Runtime] Stopping worker node 59edcd01-0829-4b87-8d8e-419ed1e2d2cb
+
+      at Socket.<anonymous> (smoke.e2e-spec.ts:61:56)
+
+  console.log
+    Worker stdout: [Runtime] Disconnected from cluster server: io client disconnect
+
+      at Socket.<anonymous> (smoke.e2e-spec.ts:61:56)
+
+ FAIL  test/smoke.e2e-spec.ts (32.407 s)
+  End-to-End Smoke Test Pipeline (e2e)
+    ✕ should successfully plan and execute a complete workflow (1085 ms)
+                            
+  ● End-to-End Smoke Test Pipeline (e2e) › should successfully plan and execute a complete workflow
+                            
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "SUCCESS"
+    Received: "FAILED"
+
+      176 |       console.log('Workflow failed! Final state:', JSON.stringify(finalState, null, 2));
+      177 |     }
+    > 178 |     expect(finalStatus).toBe(WorkflowExecutionStatus.SUCCESS);
+          |                         ^
+      179 |     
+      180 |     // Assert all steps reached SUCCESS
+      181 |     expect(finalState['step_info'].status).toBe('SUCCESS');
+
+      at Object.<anonymous> (smoke.e2e-spec.ts:178:25)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 total
+Snapshots:   0 total
+Time:        32.628 s, estimated 33 s
+Ran all test suites matching test/smoke.e2e-spec.ts.

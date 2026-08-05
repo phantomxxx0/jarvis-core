@@ -89,7 +89,7 @@ export class JarvisWorkerRuntime {
         version: "1.0.0", // from package.json or hardcoded for now
         startedAt: new Date().toISOString(),
       },
-      capabilities: this.executor.getCapabilities().map(c => ({
+      capabilities: this.executor.getCapabilities().map((c) => ({
         id: c.id,
         name: c.name,
         version: c.version,
@@ -114,7 +114,9 @@ export class JarvisWorkerRuntime {
           console.log("Registration successful");
           this.startHeartbeat();
         } else {
-          console.log(`[Runtime] Registration response: ${JSON.stringify(response)}`);
+          console.log(
+            `[Runtime] Registration response: ${JSON.stringify(response)}`,
+          );
         }
       },
     );

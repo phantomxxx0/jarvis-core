@@ -75,7 +75,7 @@ export default {
     const netInterfaces = os.networkInterfaces();
 
     const interfaceNames = Object.keys(netInterfaces).filter(
-      (name) => netInterfaces[name] && netInterfaces[name]!.length > 0
+      (name) => netInterfaces[name] && netInterfaces[name].length > 0,
     );
 
     return {

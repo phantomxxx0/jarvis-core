@@ -10,3 +10,5 @@ export * from './conversations';
 export * from './personal-intelligence';
 export * from './world-model';
 export * from './observation';
+export * from './task-executions';
+export * from './workflow-executions';

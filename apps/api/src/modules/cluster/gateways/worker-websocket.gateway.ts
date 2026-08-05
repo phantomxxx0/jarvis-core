@@ -8,14 +8,16 @@ import {
   MessageBody,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger, Inject, forwardRef } from '@nestjs/common';
+import { Logger, Inject, forwardRef, OnModuleInit } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ClusterManagerService } from '../services/cluster-manager.service';
 import { WorkerTransportGateway } from '../interfaces/worker-transport-gateway.interface';
 import { NodeIdentity } from '../contracts/cluster/node-identity.interface';
 import { ClusterManifest } from '../contracts/cluster/cluster-manifest.interface';
 import { NodeOfflineEvent } from '../events/cluster-events';
-import { TaskPlannerService } from '../../runtime/services/task-planner.service';
+import { TaskDispatcherService } from '../../runtime/services/task-dispatcher.service';
+import { ExecutionOrchestratorService } from '../../runtime/services/execution-orchestrator.service';
+import { ExecutionTransport } from '../../runtime/contracts/execution-transport.interface';
 import type {
   TaskEnvelope,
   ResultEnvelope,
@@ -28,29 +30,28 @@ import type {
   cors: { origin: '*' },
 })
 export class WorkerWebSocketGateway
-  implements OnGatewayConnection, OnGatewayDisconnect, WorkerTransportGateway {
+  implements OnGatewayConnection, OnGatewayDisconnect, WorkerTransportGateway, ExecutionTransport, OnModuleInit {
   @WebSocketServer()
   server: Server;
 
   private readonly logger = new Logger(WorkerWebSocketGateway.name);
-
-  // Mapping of nodeId -> Socket ID
   private readonly nodeSockets = new Map<string, string>();
-  // Mapping of Socket ID -> nodeId
   private readonly socketNodes = new Map<string, string>();
 
   constructor(
     @Inject(forwardRef(() => ClusterManagerService))
     private readonly clusterManager: ClusterManagerService,
     private readonly eventEmitter: EventEmitter2,
-    private readonly taskPlanner: TaskPlannerService,
-  ) { }
+    private readonly taskDispatcher: TaskDispatcherService,
+    private readonly executionOrchestrator: ExecutionOrchestratorService,
+  ) {}
+
+  onModuleInit() {
+    this.taskDispatcher.registerTransport(this);
+  }
 
   async handleConnection(client: Socket) {
-    this.logger.log(
-      `Client connected: ${client.id}. Waiting for registration...`,
-    );
-    await Promise.resolve();
+    this.logger.log(`Client connected: ${client.id}. Waiting for registration...`);
   }
 
   async handleDisconnect(client: Socket) {
@@ -58,52 +59,25 @@ export class WorkerWebSocketGateway
     if (nodeId) {
       this.disconnect(nodeId);
     }
-    this.logger.log(`Client disconnected: ${client.id}`);
-    await Promise.resolve();
   }
 
   @SubscribeMessage('register')
   handleRegister(
     @ConnectedSocket() client: Socket,
-    @MessageBody()
-    payload: { identity: NodeIdentity; manifest: ClusterManifest },
+    @MessageBody() payload: { identity: NodeIdentity; manifest: ClusterManifest },
   ) {
     const { identity, manifest } = payload;
-
-    // Call cluster manager
     const session = this.clusterManager.registerNode(identity, manifest);
 
-    // Map socket
     this.nodeSockets.set(identity.nodeId, client.id);
     this.socketNodes.set(client.id, identity.nodeId);
-
     this.connect(identity.nodeId);
-
-    // Diagnostic runtime validation dispatch
-    setTimeout(() => {
-      try {
-        const plan = this.taskPlanner.planTask({ capabilityId: 'system.info', input: {} });
-        this.logger.log(`Dispatching task system-info to ${plan.workerId}`);
-        this.dispatchTask(plan.workerId, {
-          taskId: 'demo-system-info',
-          capabilityId: plan.capabilityId,
-          payload: {},
-          traceId: 'trace-1',
-          correlationId: 'corr-1',
-          executionId: 'exec-1'
-        }).catch(err => this.logger.error(err));
-      } catch (err) {
-        this.logger.error(`Failed to plan diagnostic task: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }, 2000);
 
     return { status: 'REGISTERED', sessionId: session.sessionId };
   }
 
   connect(nodeId: string): void {
-    this.logger.log(
-      `Node ${nodeId} successfully registered on WebSocket Gateway`,
-    );
+    this.logger.log(`Node ${nodeId} successfully registered on WebSocket Gateway`);
   }
 
   disconnect(nodeId: string): void {
@@ -113,12 +87,9 @@ export class WorkerWebSocketGateway
       this.nodeSockets.delete(nodeId);
     }
 
-    // Trigger lease cleanup
     try {
       this.clusterManager.removeNodeLease(nodeId);
-    } catch {
-      // In case removeNodeLease is not yet implemented or node is already removed
-    }
+    } catch {}
 
     this.eventEmitter.emit(
       NodeOfflineEvent.EVENT_NAME,
@@ -132,7 +103,43 @@ export class WorkerWebSocketGateway
       throw new Error(`Node ${nodeId} is not connected`);
     }
     this.server.to(socketId).emit('task.dispatch', task);
-    await Promise.resolve();
+  }
+
+  async dispatchExecution(workerId: string, executionId: string, capabilityId: string, input: any): Promise<void> {
+    const socketId = this.nodeSockets.get(workerId);
+    if (!socketId) {
+      throw new Error(`Node ${workerId} is not connected`);
+    }
+    
+    const task: TaskEnvelope = {
+      taskId: executionId,
+      capabilityId: capabilityId,
+      payload: input,
+      traceId: `trace-${executionId}`,
+      correlationId: executionId,
+      executionId: executionId,
+    };
+    
+    this.server.to(socketId).emit('task.dispatch', task);
+  }
+
+  async cancelTask(workerId: string, executionId: string): Promise<void> {
+    const socketId = this.nodeSockets.get(workerId);
+    if (socketId) {
+       this.server.to(socketId).emit('task.cancel', { executionId });
+    }
+  }
+
+  onHeartbeat(nodeId: string, frame: HeartbeatFrame): void {
+    // Original implementation handled by handleHeartbeatMessage
+  }
+
+  onProgress(nodeId: string, frame: ProgressFrame): void {
+    // Original implementation handled by handleProgressMessage
+  }
+
+  onResult(nodeId: string, result: ResultEnvelope): void {
+    // Original implementation handled by handleResultMessage
   }
 
   @SubscribeMessage('heartbeat')
@@ -143,18 +150,11 @@ export class WorkerWebSocketGateway
     const frame = payload as HeartbeatFrame;
     const nodeId = this.socketNodes.get(client.id);
     if (nodeId) {
-      this.onHeartbeat(nodeId, frame);
-    }
-  }
-
-  onHeartbeat(nodeId: string, frame: HeartbeatFrame): void {
-    try {
-      this.logger.log(
-        `Heartbeat from ${nodeId} at ${String(frame.timestamp)}`,
-      );
-      this.clusterManager.renewNodeLease(nodeId);
-    } catch {
-      this.logger.warn(`Could not renew lease for ${nodeId}`);
+      try {
+        this.clusterManager.renewNodeLease(nodeId);
+      } catch {
+        this.logger.warn(`Could not renew lease for ${nodeId}`);
+      }
     }
   }
 
@@ -166,12 +166,11 @@ export class WorkerWebSocketGateway
     const frame = payload as ProgressFrame;
     const nodeId = this.socketNodes.get(client.id);
     if (nodeId) {
-      this.onProgress(nodeId, frame);
+      const execId = frame.executionId || frame.correlationId;
+      if (execId) {
+        this.executionOrchestrator.updateProgress(execId, frame.progress || 0).catch(err => this.logger.error(err));
+      }
     }
-  }
-
-  onProgress(nodeId: string, frame: ProgressFrame): void {
-    this.eventEmitter.emit(`task.progress.${frame.correlationId}`, frame);
   }
 
   @SubscribeMessage('result')
@@ -182,13 +181,14 @@ export class WorkerWebSocketGateway
     const result = payload as ResultEnvelope;
     const nodeId = this.socketNodes.get(client.id);
     if (nodeId) {
-      this.onResult(nodeId, result);
+      const execId = result.executionId || result.correlationId;
+      if (execId) {
+        if (result.status === 'SUCCESS') {
+          this.executionOrchestrator.completeTask(execId, (result as any).result ?? (result as any).data ?? (result as any).payload).catch(err => this.logger.error(err));
+        } else {
+          this.executionOrchestrator.failTask(execId, result.error).catch(err => this.logger.error(err));
+        }
+      }
     }
-  }
-
-  onResult(nodeId: string, result: ResultEnvelope): void {
-    this.logger.log('Received ResultEnvelope');
-    this.logger.log(`Status ${result.status}`);
-    this.eventEmitter.emit(`task.result.${result.correlationId}`, result);
   }
 }

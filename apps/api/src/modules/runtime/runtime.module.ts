@@ -12,9 +12,16 @@ import { RuntimeObservationListener } from './listeners/runtime-observation.list
 import { CapabilityRegistryService } from './services/capability-registry.service';
 import { CapabilityRegistryListener } from './listeners/capability-registry.listener';
 import { TaskPlannerService } from './services/task-planner.service';
+import { ExecutionOrchestratorService } from './services/execution-orchestrator.service';
+import { TaskDispatcherService } from './services/task-dispatcher.service';
+import { WorkflowEngineService } from './services/workflow-engine.service';
+import { WorkflowValidatorService } from './services/workflow-validator.service';
+import { WorkflowPlannerService } from './services/workflow-planner.service';
+import { DatabaseModule } from '../../database/database.module';
+import { InferenceModule } from '../workers/inference/inference.module';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), RegistryModule, ObservationModule],
+  imports: [ScheduleModule.forRoot(), RegistryModule, ObservationModule, DatabaseModule, InferenceModule],
   controllers: [RuntimeController],
   providers: [
     RuntimeRegistryService,
@@ -25,6 +32,11 @@ import { TaskPlannerService } from './services/task-planner.service';
     CapabilityRegistryService,
     CapabilityRegistryListener,
     TaskPlannerService,
+    ExecutionOrchestratorService,
+    TaskDispatcherService,
+    WorkflowEngineService,
+    WorkflowValidatorService,
+    WorkflowPlannerService,
   ],
   exports: [
     RuntimeRegistryService,
@@ -32,6 +44,11 @@ import { TaskPlannerService } from './services/task-planner.service';
     RuntimeSnapshotService,
     CapabilityRegistryService,
     TaskPlannerService,
+    ExecutionOrchestratorService,
+    TaskDispatcherService,
+    WorkflowEngineService,
+    WorkflowValidatorService,
+    WorkflowPlannerService,
   ],
 })
 export class RuntimeModule {}

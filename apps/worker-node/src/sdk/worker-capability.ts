@@ -20,8 +20,5 @@ export interface WorkerCapability {
   inputSchema: JSONSchema7;
   outputSchema?: JSONSchema7;
 
-  execute(
-    input: unknown,
-    context: WorkerContext
-  ): Promise<CapabilityResult>;
+  execute(input: unknown, context: WorkerContext): Promise<CapabilityResult>;
 }

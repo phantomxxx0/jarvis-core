@@ -19,7 +19,7 @@ export class EchoPlugin extends CapabilityPlugin {
     return {
       message: "Hello from Worker",
       input: args,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 }
