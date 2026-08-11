@@ -1,0 +1,9 @@
+export enum ProviderHealth {
+  UNKNOWN = 'UNKNOWN',
+  STARTING = 'STARTING',
+  READY = 'READY',
+  BUSY = 'BUSY',
+  DEGRADED = 'DEGRADED',
+  UNHEALTHY = 'UNHEALTHY',
+  OFFLINE = 'OFFLINE',
+}

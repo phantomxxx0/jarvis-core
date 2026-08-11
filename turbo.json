@@ -3,7 +3,10 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**", "tsconfig.build.tsbuildinfo"]
+    },
+    "api#build": {
+      "outputs": ["dist/**", "tsconfig.build.tsbuildinfo"]
     },
     "dev": {
       "cache": false,

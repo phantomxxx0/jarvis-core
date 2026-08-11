@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { and, eq, gt, lt } from 'drizzle-orm';
+import { and, eq, gt, lt, ne } from 'drizzle-orm';
 
 import { sessions } from '@jarvis/database';
 
@@ -107,6 +107,17 @@ export class SessionsRepository {
         updatedAt: new Date(),
       })
       .where(eq(sessions.userId, userId));
+  }
+  async revokeAllForUserExcept(userId: string, exceptSessionId: string) {
+    return this.db
+      .update(sessions)
+      .set({
+        isRevoked: true,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(sessions.userId, userId), ne(sessions.id, exceptSessionId)),
+      );
   }
 
   async deleteExpired() {

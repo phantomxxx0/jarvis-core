@@ -5,6 +5,11 @@ import { users, UserRole } from '@jarvis/database';
 
 import { DatabaseService } from '../../database';
 
+export interface SecurityStateUpdate {
+  failedLoginAttempts?: number;
+  lockoutUntil?: Date | null;
+}
+
 @Injectable()
 export class UsersRepository {
   constructor(private readonly database: DatabaseService) {}
@@ -34,6 +39,15 @@ export class UsersRepository {
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
       })
+      .from(users)
+      .where(eq(users.id, id));
+
+    return user;
+  }
+
+  async findByIdWithPasswordHash(id: string) {
+    const [user] = await this.database.db
+      .select()
       .from(users)
       .where(eq(users.id, id));
 
@@ -81,6 +95,29 @@ export class UsersRepository {
       .update(users)
       .set({
         lastLoginAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+
+    return user;
+  }
+
+  async updateSecurityState(id: string, data: SecurityStateUpdate) {
+    const [user] = await this.database.db
+      .update(users)
+      .set(data)
+      .where(eq(users.id, id))
+      .returning();
+
+    return user;
+  }
+
+  async updatePassword(id: string, passwordHash: string) {
+    const [user] = await this.database.db
+      .update(users)
+      .set({
+        passwordHash,
+        updatedAt: new Date(),
       })
       .where(eq(users.id, id))
       .returning();

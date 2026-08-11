@@ -2,7 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 
 import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '@jarvis/database';
-import { UsersService } from './users.service.js';
+import { UsersService } from './users.service';
 
 @Controller('users')
 export class UsersController {

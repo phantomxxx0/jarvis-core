@@ -1,5 +1,6 @@
 import {
   boolean,
+  integer,
   pgTable,
   text,
   timestamp,
@@ -30,6 +31,14 @@ export const users = pgTable('users', {
   }),
 
   lastLoginAt: timestamp('last_login_at', {
+    withTimezone: true,
+  }),
+
+  failedLoginAttempts: integer('failed_login_attempts')
+    .notNull()
+    .default(0),
+
+  lockoutUntil: timestamp('lockout_until', {
     withTimezone: true,
   }),
 

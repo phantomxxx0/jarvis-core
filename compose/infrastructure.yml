@@ -54,7 +54,7 @@ services:
       - ../.env
 
     environment:
-      QDRANT__SERVICE__API_KEY: 2026PhantomXYZ
+      QDRANT__SERVICE__API_KEY: ec901b720487bea7ead7c389ac01e5c141c34a656710ee813749cf2a03466124
 
     ports:
       - "${QDRANT_PORT}:6333"

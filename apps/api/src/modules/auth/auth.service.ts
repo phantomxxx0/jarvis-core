@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -11,15 +12,28 @@ import * as argon2 from 'argon2';
 import ms from 'ms';
 import type { SignOptions } from 'jsonwebtoken';
 
+import { AuditService } from '../audit/audit.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { RegisterDto } from './dto/register.dto';
 import type { SessionMetadata } from './interfaces/session-metadata.interface';
 
 type JwtExpiresIn = NonNullable<SignOptions['expiresIn']>;
 type TokenUser = { id: string; email: string; role: string };
-type RefreshTokenPayload = TokenUser & { sub: string; sid: string };
+type RefreshTokenPayload = TokenUser & { sub: string };
+
+export interface SessionSummary {
+  id: string;
+  deviceName: string | null;
+  userAgent: string | null;
+  ipAddress: string | null;
+  isRevoked: boolean;
+  lastUsedAt: Date;
+  createdAt: Date;
+  expiresAt: Date;
+}
 
 const parseDuration = ms as unknown as (value: string) => number;
 
@@ -30,6 +44,7 @@ export class AuthService {
     private readonly sessionsService: SessionsService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly auditService: AuditService,
   ) {}
 
   async register(dto: RegisterDto, sessionMetadata: SessionMetadata) {
@@ -52,19 +67,55 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, sessionMetadata: SessionMetadata) {
+    const now = new Date();
+    const loginFailureAudit = {
+      email: dto.email,
+      ipAddress: sessionMetadata.ipAddress ?? null,
+      userAgent: sessionMetadata.userAgent ?? null,
+    };
+
     const user = await this.usersService.findByEmail(dto.email);
 
     if (!user?.passwordHash) {
+      this.auditService.loginFailure(loginFailureAudit);
+      throw new UnauthorizedException('Invalid email or password');
+    }
+
+    if (user.lockoutUntil && user.lockoutUntil > now) {
+      this.auditService.loginFailure(loginFailureAudit);
       throw new UnauthorizedException('Invalid email or password');
     }
 
     if (!(await argon2.verify(user.passwordHash, dto.password))) {
+      const failureResult = await this.usersService.recordFailedLogin({
+        id: user.id,
+        failedLoginAttempts: user.failedLoginAttempts,
+        lockoutUntil: user.lockoutUntil,
+      });
+
+      if (failureResult.wasJustLocked) {
+        this.auditService.accountLocked({
+          userId: user.id,
+          email: user.email,
+          lockoutUntil: failureResult.lockoutUntil,
+        });
+      }
+
+      this.auditService.loginFailure(loginFailureAudit);
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    await this.usersService.recordSuccessfulLogin(user.id);
     await this.usersService.updateLastLogin(user.id);
 
     const tokens = await this.issueTokenPair(user, sessionMetadata);
+
+    this.auditService.loginSuccess({
+      userId: user.id,
+      email: user.email,
+      ipAddress: sessionMetadata.ipAddress ?? null,
+      userAgent: sessionMetadata.userAgent ?? null,
+    });
 
     return {
       ...tokens,
@@ -94,15 +145,21 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
-    const session = await this.sessionsService.findActiveById(payload.sid);
+    const activeSessions = await this.sessionsService.findActiveByUserId(
+      payload.sub,
+    );
 
-    if (!session || session.userId !== payload.sub) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+    let session: (typeof activeSessions)[number] | undefined;
+
+    for (const candidate of activeSessions) {
+      if (await argon2.verify(candidate.refreshTokenHash, refreshToken)) {
+        session = candidate;
+        break;
+      }
     }
 
-    if (!(await argon2.verify(session.refreshTokenHash, refreshToken))) {
-      await this.sessionsService.revoke(session.id);
-      throw new UnauthorizedException('Invalid or expired refresh token');
+    if (!session) {
+      return this.handleRefreshTokenReuse(payload.sub);
     }
 
     const user = await this.usersService.findById(payload.sub);
@@ -125,6 +182,72 @@ export class AuthService {
     await this.sessionsService.updateLastUsedAt(session.id);
 
     return tokens;
+  }
+
+  async logout(sessionId: string): Promise<void> {
+    await this.sessionsService.revoke(sessionId);
+    this.auditService.logout({ sessionId });
+  }
+
+  async logoutAll(userId: string): Promise<void> {
+    await this.sessionsService.revokeAllForUser(userId);
+    this.auditService.logoutAll({ userId });
+  }
+
+  async listSessions(userId: string): Promise<SessionSummary[]> {
+    const sessions = await this.sessionsService.findByUserId(userId);
+
+    return sessions.map((session): SessionSummary => ({
+      id: session.id,
+      deviceName: session.deviceName,
+      userAgent: session.userAgent,
+      ipAddress: session.ipAddress,
+      isRevoked: session.isRevoked,
+      lastUsedAt: session.lastUsedAt,
+      createdAt: session.createdAt,
+      expiresAt: session.expiresAt,
+    }));
+  }
+
+  async revokeSession(userId: string, sessionId: string): Promise<void> {
+    const session = await this.sessionsService.findById(sessionId);
+
+    if (!session || session.userId !== userId) {
+      throw new NotFoundException('Session not found');
+    }
+
+    await this.sessionsService.revoke(sessionId);
+  }
+  async changePassword(
+    userId: string,
+    currentSessionId: string,
+    dto: ChangePasswordDto,
+  ): Promise<void> {
+    const user = await this.usersService.findByIdWithPasswordHash(userId);
+
+    if (
+      !user?.passwordHash ||
+      !(await argon2.verify(user.passwordHash, dto.currentPassword))
+    ) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    const passwordHash = await argon2.hash(dto.newPassword);
+    await this.usersService.changePassword(userId, passwordHash);
+    await this.sessionsService.revokeAllForUserExcept(userId, currentSessionId);
+
+    this.auditService.passwordChanged({
+      userId: user.id,
+      email: user.email,
+    });
+  }
+
+  private async handleRefreshTokenReuse(userId: string): Promise<never> {
+    await this.sessionsService.revokeAllForUser(userId);
+
+    this.auditService.refreshTokenReuse({ userId });
+
+    throw new UnauthorizedException('Invalid or expired refresh token');
   }
 
   private async issueTokenPair(
@@ -170,7 +293,7 @@ export class AuthService {
   private async generateTokenPair(user: TokenUser, sessionId: string) {
     const [accessToken, refreshToken] = await Promise.all([
       this.generateAccessToken(user, sessionId),
-      this.generateRefreshToken(user, sessionId),
+      this.generateRefreshToken(user),
     ]);
 
     return { accessToken, refreshToken };
@@ -188,9 +311,9 @@ export class AuthService {
     );
   }
 
-  private generateRefreshToken(user: TokenUser, sessionId: string) {
+  private generateRefreshToken(user: TokenUser) {
     return this.jwtService.signAsync(
-      { sub: user.id, sid: sessionId, email: user.email, role: user.role },
+      { sub: user.id, email: user.email, role: user.role },
       {
         secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
         expiresIn: this.configService.getOrThrow<string>(

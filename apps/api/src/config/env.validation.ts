@@ -14,7 +14,6 @@ export const envSchema = z.object({
   // ==========================
   // Access Token
   // ==========================
-
   JWT_ACCESS_SECRET: z
     .string()
     .min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
@@ -24,12 +23,49 @@ export const envSchema = z.object({
   // ==========================
   // Refresh Token
   // ==========================
-
   JWT_REFRESH_SECRET: z
     .string()
     .min(32, 'JWT_REFRESH_SECRET must be at least 32 characters'),
 
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
+
+  // ==========================
+  // Rate Limiting
+  // ==========================
+  THROTTLE_TTL: z.coerce.number().default(60000),
+
+  THROTTLE_LIMIT: z.coerce.number().default(5),
+
+  // ==========================
+  // Security / Auth Lockout
+  // ==========================
+  AUTH_MAX_FAILED_ATTEMPTS: z.coerce.number().default(5),
+
+  AUTH_LOCKOUT_DURATION_MINS: z.coerce.number().default(15),
+
+  // ==========================
+  // Ollama
+  // ==========================
+  OLLAMA_BASE_URL: z.string().url(),
+
+  OLLAMA_CHAT_MODEL: z.string().min(1),
+
+  OLLAMA_EMBED_MODEL: z.string().min(1),
+
+  OLLAMA_REASON_MODEL: z.string().min(1),
+
+  OLLAMA_TIMEOUT_MS: z.coerce.number().default(60000),
+
+  // ==========================
+  // Qdrant
+  // ==========================
+  QDRANT_URL: z.string().url(),
+
+  QDRANT_API_KEY: z.string().min(1),
+
+  QDRANT_COLLECTION: z.string().min(1),
+
+  QDRANT_VECTOR_SIZE: z.coerce.number().default(768),
 });
 
 export type Env = z.infer<typeof envSchema>;
