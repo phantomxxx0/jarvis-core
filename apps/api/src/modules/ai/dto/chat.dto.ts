@@ -1,4 +1,4 @@
-import { IsArray, IsIn, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsIn, IsString, ValidateNested, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class ChatMessageDto {
@@ -10,6 +10,10 @@ class ChatMessageDto {
 }
 
 export class ChatDto {
+  @IsString()
+  @IsOptional()
+  sessionId?: string;
+
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ChatMessageDto)

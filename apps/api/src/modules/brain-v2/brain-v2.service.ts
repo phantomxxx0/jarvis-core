@@ -127,6 +127,7 @@ export class BrainV2Service {
       const recentMessages = await this.conversationsService.getRecentMessages(
         input.userId,
         10,
+        input.sessionId,
       );
       this.workingMemory.seedConversationHistory(state, recentMessages);
 
@@ -198,6 +199,7 @@ export class BrainV2Service {
             input.userId,
             input.rawInput,
             languageResult.content,
+            input.sessionId,
           );
         } catch (err) {
           this.logger.error(
@@ -378,6 +380,7 @@ export class BrainV2Service {
       const recentMessages = await this.conversationsService.getRecentMessages(
         input.userId,
         10,
+        input.sessionId,
       );
       this.workingMemory.seedConversationHistory(state, recentMessages);
 
@@ -518,6 +521,7 @@ export class BrainV2Service {
           input.userId,
           input.rawInput,
           languageResult.content,
+          input.sessionId,
         );
       } catch (err) {
         this.logger.error(

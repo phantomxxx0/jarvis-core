@@ -16,7 +16,7 @@ export class AIController {
 
   @Post('chat')
   async chat(@Body() dto: ChatDto, @CurrentUser() user: JwtPayload) {
-    const sessionId = randomUUID();
+    const sessionId = dto.sessionId || randomUUID();
     const latestMessage = dto.messages[dto.messages.length - 1]?.content || '';
 
     const result = await this.brainService.processRequest(
@@ -44,6 +44,12 @@ export class AIController {
     };
 
     try {
+      const sessionId = dto.sessionId || randomUUID();
+
+      sendEvent('session', {
+        sessionId,
+      });
+
       sendEvent('status', {
         message: 'Initializing cognitive pipeline...',
       });
@@ -69,6 +75,7 @@ export class AIController {
       const answer = await this.brainService.think(
         latestMessage,
         user.id,
+        sessionId,
         (eventType: string, eventData: unknown) => {
           if (eventType === 'token') {
             tokenStreamed = true;

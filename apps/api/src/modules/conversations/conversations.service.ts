@@ -33,12 +33,14 @@ export class ConversationsService {
     userId: string,
     userMessage: string,
     assistantMessage: string,
+    conversationId?: string,
   ) {
     const { conv, userSaved, assistantSaved } =
       await this.repository.saveInteractionTurn(
         userId,
         userMessage,
         assistantMessage,
+        conversationId,
       );
 
     this.eventEmitter.emit(MemoryEvents.CONVERSATION_MESSAGE_CREATED, {
@@ -54,8 +56,8 @@ export class ConversationsService {
     return { conv, userSaved, assistantSaved };
   }
 
-  async getRecentMessages(userId: string, limit = 10): Promise<ChatMessage[]> {
-    const rows = await this.repository.findRecent(userId, limit);
+  async getRecentMessages(userId: string, limit = 10, conversationId?: string): Promise<ChatMessage[]> {
+    const rows = await this.repository.findRecent(userId, limit, conversationId);
 
     return rows.map((row) => ({
       role: row.role as ChatMessage['role'],

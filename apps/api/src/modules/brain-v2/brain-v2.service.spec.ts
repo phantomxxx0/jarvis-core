@@ -163,7 +163,7 @@ describe('BrainV2Service.processStream', () => {
       id: 'user-1',
       sessionId: 'session-1',
     });
-    expect(conversationsService.getRecentMessages).toHaveBeenCalledWith('user-1', 10);
+    expect(conversationsService.getRecentMessages).toHaveBeenCalledWith('user-1', 10, 'session-1');
   });
 
   it('runs ExecutiveService.process exactly once', async () => {
@@ -189,6 +189,7 @@ describe('BrainV2Service.processStream', () => {
       'user-1',
       'hello',
       'Hello world',
+      'session-1',
     );
   });
 

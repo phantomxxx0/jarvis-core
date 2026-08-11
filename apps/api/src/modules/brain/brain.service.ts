@@ -47,6 +47,7 @@ export class BrainService {
   async think(
     prompt: string,
     userId = 'system',
+    sessionId?: string,
     onProgress?: (event: string, data: any) => void,
   ): Promise<string> {
     onProgress?.('status', {

@@ -87,10 +87,10 @@ export class BrainRouterService {
   async think(
     prompt: string,
     userId: string,
+    sessionId: string,
     onProgress?: (event: string, data: any) => void,
   ): Promise<string> {
     if (this.useV2) {
-      const sessionId = randomUUID();
       this.logger.debug(
         `[BrainRouter] Streaming via Brain V2 for user=${userId} session=${sessionId}`,
       );
@@ -121,6 +121,6 @@ export class BrainRouterService {
       return result.content;
     }
 
-    return this.brainV1.think(prompt, userId, onProgress);
+    return this.brainV1.think(prompt, userId, sessionId, onProgress);
   }
 }

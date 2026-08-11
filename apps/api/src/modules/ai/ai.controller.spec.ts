@@ -56,6 +56,7 @@ describe('AIController.streamChat()', () => {
       async (
         _prompt: string,
         _userId: string,
+        _sessionId: string,
         onProgress?: (event: string, data: any) => void,
       ) => {
         onProgress?.('token', { content: 'Hel' });
@@ -79,6 +80,7 @@ describe('AIController.streamChat()', () => {
       async (
         _prompt: string,
         _userId: string,
+        _sessionId: string,
         onProgress?: (event: string, data: any) => void,
       ) => {
         onProgress?.('token', { content: 'Hel' });
@@ -103,6 +105,7 @@ describe('AIController.streamChat()', () => {
       async (
         _prompt: string,
         _userId: string,
+        _sessionId: string,
         onProgress?: (event: string, data: any) => void,
       ) => {
         onProgress?.('token', { content: 'Hi' });
@@ -137,6 +140,7 @@ describe('AIController.streamChat()', () => {
       async (
         _prompt: string,
         _userId: string,
+        _sessionId: string,
         onProgress?: (event: string, data: any) => void,
       ) => {
         onProgress?.('status', {

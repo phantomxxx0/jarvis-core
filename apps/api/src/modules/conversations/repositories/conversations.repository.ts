@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, and } from 'drizzle-orm';
 
 import { conversations, conversationMessages } from '@jarvis/database';
 
@@ -40,12 +40,38 @@ export class ConversationsRepository {
     userId: string,
     userMessage: string,
     assistantMessage: string,
+    conversationId?: string,
   ) {
     return this.database.db.transaction(async (tx) => {
-      const [conv] = await tx
-        .insert(conversations)
-        .values({ userId })
-        .returning();
+      let convId = conversationId;
+      let conv: any;
+
+      if (convId) {
+        const existing = await tx
+          .select()
+          .from(conversations)
+          .where(eq(conversations.id, convId))
+          .limit(1);
+
+        if (existing.length > 0) {
+          conv = existing[0];
+          if (conv.userId !== userId) {
+            throw new Error('Unauthorized conversation access');
+          }
+        }
+      }
+
+      if (!conv) {
+        const insertValues: any = { userId };
+        if (convId) {
+          insertValues.id = convId;
+        }
+        const [newConv] = await tx
+          .insert(conversations)
+          .values(insertValues)
+          .returning();
+        conv = newConv;
+      }
 
       const [userSaved] = await tx
         .insert(conversationMessages)
@@ -71,16 +97,21 @@ export class ConversationsRepository {
     });
   }
 
-  async findRecent(userId: string, limit = 10) {
+  async findRecent(userId: string, limit = 10, conversationId?: string) {
+    const condition = conversationId
+      ? and(eq(conversationMessages.userId, userId), eq(conversationMessages.conversationId, conversationId))
+      : eq(conversationMessages.userId, userId);
+
     const rows = await this.database.db
       .select()
       .from(conversationMessages)
-      .where(eq(conversationMessages.userId, userId))
+      .where(condition)
       .orderBy(desc(conversationMessages.createdAt))
       .limit(limit);
 
     return rows.reverse();
   }
+
 
   async deleteAll(userId: string): Promise<any> {
     return this.database.db

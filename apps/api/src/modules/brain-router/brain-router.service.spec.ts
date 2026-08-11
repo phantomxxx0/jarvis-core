@@ -60,7 +60,7 @@ describe('BrainRouterService.think()', () => {
     const router = await build(true);
     brainV2.processStream.mockResolvedValue(makeBrainOutput());
 
-    await router.think('hello', 'user-1', jest.fn());
+    await router.think('hello', 'user-1', 'session-1', jest.fn());
 
     expect(brainV2.processStream).toHaveBeenCalledTimes(1);
     expect(brainV1.think).not.toHaveBeenCalled();
@@ -71,9 +71,9 @@ describe('BrainRouterService.think()', () => {
     brainV1.think.mockResolvedValue('the v1 answer');
 
     const onProgress = jest.fn();
-    const result = await router.think('hello', 'user-1', onProgress);
+    const result = await router.think('hello', 'user-1', 'session-1', onProgress);
 
-    expect(brainV1.think).toHaveBeenCalledWith('hello', 'user-1', onProgress);
+    expect(brainV1.think).toHaveBeenCalledWith('hello', 'user-1', 'session-1', onProgress);
     expect(brainV2.processStream).not.toHaveBeenCalled();
     expect(result).toBe('the v1 answer');
   });
@@ -90,7 +90,7 @@ describe('BrainRouterService.think()', () => {
     );
 
     const onProgress = jest.fn();
-    await router.think('hi', 'user-1', onProgress);
+    await router.think('hi', 'user-1', 'session-1', onProgress);
 
     expect(onProgress).toHaveBeenCalledWith('token', { content: 'Hel' });
     expect(onProgress).toHaveBeenCalledWith('token', { content: 'lo' });
@@ -102,7 +102,7 @@ describe('BrainRouterService.think()', () => {
       makeBrainOutput({ content: 'a normal V2 answer' }),
     );
 
-    const result = await router.think('hi', 'user-1', jest.fn());
+    const result = await router.think('hi', 'user-1', 'session-1', jest.fn());
 
     expect(result).toBe('a normal V2 answer');
   });
@@ -115,14 +115,14 @@ describe('BrainRouterService.think()', () => {
       }),
     );
 
-    await expect(router.think('hi', 'user-1', jest.fn())).rejects.toThrow();
+    await expect(router.think('hi', 'user-1', 'session-1', jest.fn())).rejects.toThrow();
   });
 
   it('useV1: errors from BrainService.think() propagate unchanged', async () => {
     const router = await build(false);
     brainV1.think.mockRejectedValue(new Error('v1 boom'));
 
-    await expect(router.think('hi', 'user-1', jest.fn())).rejects.toThrow(
+    await expect(router.think('hi', 'user-1', 'session-1', jest.fn())).rejects.toThrow(
       'v1 boom',
     );
   });
