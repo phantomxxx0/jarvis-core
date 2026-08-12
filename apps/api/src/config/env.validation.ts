@@ -44,6 +44,11 @@ export const envSchema = z.object({
   AUTH_LOCKOUT_DURATION_MINS: z.coerce.number().default(15),
 
   // ==========================
+  // API Gateway
+  // ==========================
+  JARVIS_API_KEY: z.string().min(8).optional(),
+
+  // ==========================
   // Ollama
   // ==========================
   OLLAMA_BASE_URL: z.string().url(),

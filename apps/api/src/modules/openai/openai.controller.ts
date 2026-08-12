@@ -3,8 +3,10 @@ import type { Response, Request } from 'express';
 import { randomUUID } from 'crypto';
 import { BrainRouterService } from '../brain-router/brain-router.service';
 import { ApiKeyAuthGuard } from '../auth/guards/api-key-auth.guard';
+import { Public } from '../auth/decorators/public.decorator';
 import { ChatCompletionDto } from './dto/chat-completion.dto';
 
+@Public()
 @UseGuards(ApiKeyAuthGuard)
 @Controller('v1')
 export class OpenAIController {
