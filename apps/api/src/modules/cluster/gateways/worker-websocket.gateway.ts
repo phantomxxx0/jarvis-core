@@ -17,6 +17,7 @@ import { ClusterManifest } from '../contracts/cluster/cluster-manifest.interface
 import { NodeOfflineEvent } from '../events/cluster-events';
 import { TaskDispatcherService } from '../../runtime/services/task-dispatcher.service';
 import { ExecutionOrchestratorService } from '../../runtime/services/execution-orchestrator.service';
+import { BrainRouterService } from '../../brain-router/brain-router.service';
 import { ExecutionTransport } from '../../runtime/contracts/execution-transport.interface';
 import type {
   TaskEnvelope,
@@ -50,6 +51,8 @@ export class WorkerWebSocketGateway
     private readonly eventEmitter: EventEmitter2,
     private readonly taskDispatcher: TaskDispatcherService,
     private readonly executionOrchestrator: ExecutionOrchestratorService,
+    @Inject(forwardRef(() => BrainRouterService))
+    private readonly brainService: BrainRouterService,
   ) {}
 
   onModuleInit() {
@@ -161,6 +164,25 @@ export class WorkerWebSocketGateway
 
   onResult(_nodeId: string, _result: ResultEnvelope): void {
     this.logger.debug(`onResult method stub called for ${_nodeId}`, _result);
+  }
+
+  @SubscribeMessage('task.submit')
+  async handleTaskSubmit(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: TaskEnvelope,
+  ) {
+    if (payload.capabilityId === 'CORE_INTENT_ROUTER') {
+      const text = payload.payload.text as string;
+      const sessionId = payload.correlationId || 'voice-session';
+      const userId = 'voice-user';
+      try {
+        const result = await this.brainService.processRequest(text, userId, sessionId);
+        client.emit('voice.response', { text: result.answer });
+      } catch (err) {
+        this.logger.error('Failed to process voice intent', err);
+        client.emit('voice.response', { text: 'Sorry, I encountered an error.' });
+      }
+    }
   }
 
   @SubscribeMessage('heartbeat')

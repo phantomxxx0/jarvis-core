@@ -62,9 +62,12 @@ export class VoiceGateway {
       // 2. Generate audio via TTS Plugin
       const result = await this.ttsPlugin.execute({ text });
 
-      // 3. (Mock) Play audio. In reality, we would pipe `result` (frames) to SpeakerDriver.
-      // We simulate playback duration.
-      await new Promise((resolve) => setTimeout(resolve, result.durationMs));
+      // 3. Play audio through the hardware driver
+      if (result.frames && result.frames.length > 0) {
+        await this.sessionManager.driver.playAudio(result.frames);
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, result.durationMs));
+      }
 
       // 4. Resume listening
       await this.sessionManager.start();

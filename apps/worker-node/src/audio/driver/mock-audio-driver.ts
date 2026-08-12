@@ -60,4 +60,13 @@ export class MockAudioDriver implements AudioDriver {
     }
     this.isCapturing = false;
   }
+
+  async playAudio(frames: PcmFrame[]): Promise<void> {
+    await Promise.resolve();
+    // Simulate playing audio
+    if (frames.length > 0) {
+      const durationMs = frames.length * 50; // assuming 50ms chunks
+      await new Promise((resolve) => setTimeout(resolve, durationMs));
+    }
+  }
 }

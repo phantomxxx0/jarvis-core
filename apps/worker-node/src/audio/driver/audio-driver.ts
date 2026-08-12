@@ -15,4 +15,5 @@ export interface AudioDriver {
     onFrame: (frame: PcmFrame) => void,
   ): Promise<void>;
   stopCapture(): Promise<void>;
+  playAudio(frames: PcmFrame[]): Promise<void>;
 }

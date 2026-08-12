@@ -46,6 +46,16 @@ export class JarvisWorkerRuntime {
     )._reconnectTimer?.unref();
   }
 
+  public emitTask(task: TaskEnvelope): void {
+    this.socket.emit("task.submit", task);
+  }
+
+  public onVoiceResponse(callback: (text: string) => void): void {
+    this.socket.on("voice.response", (data: { text: string }) => {
+      callback(data.text);
+    });
+  }
+
   private setupListeners(): void {
     this.socket.on("connect", () => {
       console.log("Connected");

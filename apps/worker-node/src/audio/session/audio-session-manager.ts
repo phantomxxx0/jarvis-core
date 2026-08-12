@@ -14,7 +14,7 @@ export class AudioSessionManager {
   public onSpeechSegmentComplete?: (segment: SpeechSegment) => void;
 
   constructor(
-    private readonly driver: AudioDriver,
+    public readonly driver: AudioDriver,
     private readonly ringBuffer: RingBuffer,
     private readonly vad: VadProvider,
     private readonly wakeWord: WakeWordProvider,

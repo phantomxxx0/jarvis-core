@@ -1,5 +1,6 @@
 import { CapabilityPlugin } from "../../sdk/capability-plugin";
 import { TtsProvider } from "../providers/tts-provider";
+import { PcmFrame } from "../core/pcm-frame";
 
 export interface TtsPayload {
   text: string;
@@ -9,7 +10,7 @@ export interface TtsPayload {
 export class TtsPlugin extends CapabilityPlugin<
   unknown,
   TtsPayload,
-  { success: boolean; durationMs: number }
+  { success: boolean; durationMs: number; frames: PcmFrame[] }
 > {
   readonly id = "TEXT_TO_SPEECH";
   readonly version = "1.0.0";
@@ -33,7 +34,7 @@ export class TtsPlugin extends CapabilityPlugin<
 
   async execute(
     args: TtsPayload,
-  ): Promise<{ success: boolean; durationMs: number }> {
+  ): Promise<{ success: boolean; durationMs: number; frames: PcmFrame[] }> {
     const frames = await this.provider.synthesize(args.text, args.voice);
 
     // In a fully integrated system, these frames would be sent to the SpeakerDriver.
@@ -41,6 +42,7 @@ export class TtsPlugin extends CapabilityPlugin<
     return {
       success: true,
       durationMs: frames.length * 50, // rough estimation
+      frames,
     };
   }
 
