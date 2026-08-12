@@ -11,6 +11,7 @@ import { PiperTtsProvider } from "./audio/providers/piper-tts-provider";
 import { VoiceGateway } from "./audio/gateway/voice-gateway";
 import { EnergyVadProvider } from "./audio/gates/energy-vad-provider";
 import { MockWakeWordProvider } from "./audio/gates/mocks/mock-wake-word-provider";
+import { OpenWakeWordProvider } from "./audio/gates/openwakeword-provider";
 import { RingBuffer } from "./audio/buffer/ring-buffer";
 import { SttPlugin } from "./audio/plugins/stt-plugin";
 import { TtsPlugin } from "./audio/plugins/tts-plugin";
@@ -27,6 +28,7 @@ async function bootstrap() {
   runtime.start();
 
   let sessionManager: AudioSessionManager | undefined;
+  let wakeWordProvider: any;
 
   if (process.env.JARVIS_VOICE_ENABLED === 'true') {
     console.log("Initializing Voice Gateway...");
@@ -39,7 +41,15 @@ async function bootstrap() {
       ? parseFloat(process.env.JARVIS_VAD_THRESHOLD_DB)
       : -45;
     const vadProvider = new EnergyVadProvider({ thresholdDb });
-    const wakeWordProvider = new MockWakeWordProvider();
+    
+    const wakeWordModel = process.env.JARVIS_WAKE_WORD_MODEL;
+    wakeWordProvider = process.env.JARVIS_WAKE_WORD_ENABLED === 'true'
+      ? new OpenWakeWordProvider({ model: wakeWordModel })
+      : new MockWakeWordProvider();
+      
+    if (process.env.JARVIS_WAKE_WORD_ENABLED === 'true') {
+      (wakeWordProvider as OpenWakeWordProvider).initialize();
+    }
     const ringBuffer = new RingBuffer(1000, 50); // 1s buffer with 50ms frames
     sessionManager = new AudioSessionManager(audioDriver, ringBuffer, vadProvider, wakeWordProvider);
 
@@ -74,6 +84,9 @@ async function bootstrap() {
     if (sessionManager) {
       sessionManager.stop().catch(console.error);
     }
+    if (process.env.JARVIS_WAKE_WORD_ENABLED === 'true') {
+      (wakeWordProvider as any).stop?.();
+    }
     processManager.cleanupAll();
     runtime.stop();
     process.exit(0);
@@ -83,6 +96,9 @@ async function bootstrap() {
     console.log("\nGracefully shutting down from SIGTERM");
     if (sessionManager) {
       sessionManager.stop().catch(console.error);
+    }
+    if (process.env.JARVIS_WAKE_WORD_ENABLED === 'true') {
+      (wakeWordProvider as any).stop?.();
     }
     processManager.cleanupAll();
     runtime.stop();
