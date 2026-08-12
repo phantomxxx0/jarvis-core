@@ -18,6 +18,7 @@ import { AIModule } from './modules/ai/ai.module';
 import { BrainModule } from './modules/brain/brain.module';
 import { BrainV2Module } from './modules/brain-v2/brain-v2.module';
 import { BrainRouterModule } from './modules/brain-router/brain-router.module';
+import { OpenAIModule } from './modules/openai/openai.module';
 
 import { PersonalIntelligenceModule } from './modules/personal-intelligence/personal-intelligence.module';
 import { WorldModelModule } from './modules/world-model/world-model.module';
@@ -68,6 +69,9 @@ import { GovernanceModule } from './modules/governance/governance.module';
 
     // Brain Router (switches between V1/V2)
     BrainRouterModule,
+
+    // OpenAI Compatible API
+    OpenAIModule,
 
     // Cognitive Subsystems
     VectorModule,
