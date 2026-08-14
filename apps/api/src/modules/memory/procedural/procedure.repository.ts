@@ -13,9 +13,15 @@ export interface CreateProcedureData {
   }>;
 }
 
+import { BrainEvent } from '../../brain/events/enums/brain-event.enum';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
 @Injectable()
 export class ProcedureRepository {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   async create(data: CreateProcedureData) {
     const [mem] = await this.database.db
@@ -32,6 +38,8 @@ export class ProcedureRepository {
         },
       })
       .returning();
+
+    this.eventEmitter.emit(BrainEvent.MEMORY_STORED, { memory: mem });
 
     return {
       id: mem.id,

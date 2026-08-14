@@ -8,11 +8,15 @@ import {
 
 import { MemoryIndexService } from './services/memory-index.service';
 
+import { BrainEvent } from '../brain/events/enums/brain-event.enum';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
 @Injectable()
 export class MemoriesService {
   constructor(
     private readonly memoriesRepository: MemoriesRepository,
     private readonly memoryIndexService: MemoryIndexService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -22,7 +26,13 @@ export class MemoriesService {
    * MemoryIndexService.
    */
   async create(data: CreateMemoryData) {
-    return this.memoriesRepository.create(data);
+    const memory = await this.memoriesRepository.create(data);
+    
+    // Emit the MEMORY_STORED event so that BrainEventListener
+    // can index the full DB row into Qdrant asynchronously.
+    this.eventEmitter.emit(BrainEvent.MEMORY_STORED, { memory });
+
+    return memory;
   }
 
   async findById(userId: string, memoryId: string) {
