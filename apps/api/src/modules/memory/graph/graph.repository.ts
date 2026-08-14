@@ -57,6 +57,35 @@ export class GraphRepository {
     return entity;
   }
 
+  async resolveEntity(userId: string, name: string) {
+    if (!name) return null;
+    if (name.toUpperCase() === 'USER') {
+      return this.findEntityByName(userId, 'USER');
+    }
+
+    // Try exact match first
+    const exact = await this.findEntityByName(userId, name);
+    if (exact) return exact;
+
+    // Try finding by first word
+    const firstWord = name.trim().split(/\s+/)[0];
+    const entities = await this.database.db
+      .select()
+      .from(worldEntities)
+      .where(
+        and(
+          eq(worldEntities.ownerId, userId),
+          or(
+            ilike(worldEntities.name, firstWord),
+            ilike(worldEntities.name, `${firstWord} %`)
+          )
+        )
+      );
+    if (entities.length > 0) return entities[0];
+
+    return null;
+  }
+
   async createRelationship(data: CreateGraphRelationshipData) {
     const [rel] = await this.database.db
       .insert(worldRelationships)

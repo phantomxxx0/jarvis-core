@@ -37,7 +37,7 @@ export class GraphMemoryService implements IMemoryService<GraphMemoryData> {
     // First pass: create entities
     const entityIdMap = new Map<string, string>();
     for (const ent of data.entities) {
-      let existing = await this.graphRepo.findEntityByName(userId, ent.name);
+      let existing = await this.graphRepo.resolveEntity(userId, ent.name);
       if (!existing) {
         existing = await this.graphRepo.createEntity({
           userId,
@@ -69,78 +69,101 @@ export class GraphMemoryService implements IMemoryService<GraphMemoryData> {
   }
 
   async retrieve(params: MemoryRetrievalParams): Promise<GraphMemoryData[]> {
-    // Basic heuristic: search entities and relations matching query terms
-    const cleanQuery = params.query.replace(/[^\w\s]/g, '');
-    const terms = cleanQuery.split(' ').filter((t) => t.length > 3);
-    const results: GraphMemoryData[] = [];
+    const query = params.query;
+    
+    // 1. Identify Subject
+    const subjectStr = this.extractSubject(query);
+    console.log(`[GRAPH_DEBUG] QUERY: ${query}`);
+    console.log(`[GRAPH_DEBUG] RESOLVED SUBJECT: ${subjectStr}`);
+    if (!subjectStr) {
+      return []; // Unresolved subject behavior: do NOT perform global retrieval.
+    }
 
-    for (const term of terms) {
-      const entities = await this.graphRepo.searchEntities(
-        params.userId,
-        term,
-        params.limit,
-      );
-      const relations = await this.graphRepo.searchRelationshipsByRelation(
-        params.userId,
-        term,
-        params.limit,
-      );
+    // 2. Resolve Canonical Entity
+    const canonicalEntity = await this.graphRepo.resolveEntity(params.userId, subjectStr);
+    console.log(`[GRAPH_DEBUG] RESOLVED SUBJECT ID: ${canonicalEntity?.id}`);
+    if (!canonicalEntity) {
+      return []; // Return empty result
+    }
 
-      const entityIdsToFetch = new Set<string>();
-      for (const e of entities) entityIdsToFetch.add(e.id);
-      for (const r of relations) {
-        entityIdsToFetch.add(r.fromEntity);
-        entityIdsToFetch.add(r.toEntity);
+    // 3. Extract Relationship Type
+    const relationKeywords = ['father', 'mother', 'brother', 'sister', 'wife', 'husband', 'son', 'daughter', 'actor', 'favourite', 'favorite'];
+    let relationFilter: string | null = null;
+    for (const kw of relationKeywords) {
+       if (query.toLowerCase().includes(kw)) {
+          relationFilter = kw;
+          break;
+       }
+    }
+    console.log(`[GRAPH_DEBUG] RESOLVED RELATION: ${relationFilter}`);
+
+    // 4. Entity-scoped Graph Query
+    const rels = await this.graphRepo.findRelationshipsByEntityId(params.userId, canonicalEntity.id);
+
+    const hydratedRels: Array<{
+      from: string;
+      relation: string;
+      to: string;
+      confidence: number;
+    }> = [];
+
+    for (const r of rels) {
+      // 5. Only relevant relationships
+      if (relationFilter && !r.relation.toLowerCase().includes(relationFilter)) {
+         continue;
       }
 
-      if (entityIdsToFetch.size > 0) {
-        // Fetch relationships for these entities
-        for (const entId of entityIdsToFetch) {
-          const ent = await this.graphRepo.findEntityById(params.userId, entId);
-          if (!ent) continue;
+      const fromEnt = await this.graphRepo.findEntityById(params.userId, r.fromEntity);
+      const toEnt = await this.graphRepo.findEntityById(params.userId, r.toEntity);
+      hydratedRels.push({
+        from: fromEnt?.name ?? r.fromEntity,
+        relation: r.relation,
+        to: toEnt?.name ?? r.toEntity,
+        confidence: r.confidence ?? 50,
+      });
+    }
+    console.log(`[GRAPH_DEBUG] GRAPH RESULTS: ${JSON.stringify(hydratedRels)}`);
 
-          const rels = await this.graphRepo.findRelationshipsByEntityId(
-            params.userId,
-            entId,
-          );
+    if (hydratedRels.length === 0) {
+       return [];
+    }
 
-          const hydratedRels: Array<{
-            from: string;
-            relation: string;
-            to: string;
-            confidence: number;
-          }> = [];
-          for (const r of rels) {
-            const fromEnt = await this.graphRepo.findEntityById(
-              params.userId,
-              r.fromEntity,
-            );
-            const toEnt = await this.graphRepo.findEntityById(
-              params.userId,
-              r.toEntity,
-            );
-            hydratedRels.push({
-              from: fromEnt?.name ?? r.fromEntity,
-              relation: r.relation,
-              to: toEnt?.name ?? r.toEntity,
-              confidence: r.confidence ?? 50,
-            });
-          }
+    return [{
+      entities: [{
+        name: canonicalEntity.name,
+        type: canonicalEntity.type,
+        description: canonicalEntity.description ?? undefined,
+      }],
+      relationships: hydratedRels,
+    }];
+  }
 
-          results.push({
-            entities: [
-              {
-                name: ent.name,
-                type: ent.type,
-                description: ent.description ?? undefined,
-              },
-            ],
-            relationships: hydratedRels,
-          });
-        }
+  private extractSubject(query: string): string | null {
+    const clean = query.toLowerCase();
+    
+    if (/\b(my|me|i|myself)\b/.test(clean)) {
+      return 'USER';
+    }
+
+    const possessiveMatch = query.match(/(.+?)'s\b/i);
+    if (possessiveMatch) {
+      let subject = possessiveMatch[1];
+      const ignoreWords = ['who', 'what', 'where', 'when', 'why', 'how', 'is', 'are', 'am', 'the', 'a', 'an', 'of', 'tell', 'me', 'about', 'can', 'you'];
+      const words = subject.split(/\s+/).filter(w => w && !ignoreWords.includes(w.toLowerCase()));
+      if (words.length > 0) {
+        return words.join(' ');
       }
     }
-    return results;
+
+    const tokens = query.replace(/[^\w\s]/g, '').split(/\s+/);
+    const stopWords = ['who', 'what', 'where', 'when', 'why', 'how', 'is', 'are', 'am', 'the', 'a', 'an', 'of', 'father', 'mother', 'brother', 'sister', 'wife', 'husband', 'son', 'daughter', 'actor', 'favourite', 'favorite'];
+    for (const t of tokens) {
+      if (!stopWords.includes(t.toLowerCase()) && t.length > 2) {
+        return t;
+      }
+    }
+
+    return null;
   }
 
   async update(
