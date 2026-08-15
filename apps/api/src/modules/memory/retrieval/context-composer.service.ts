@@ -37,15 +37,25 @@ export class ContextComposerService {
     const contexts: MemoryContext[] = [];
 
     // Parallel retrieval from all specialized memory stores
-    const results = await Promise.allSettled([
-      this.graphMemory.composeContext(params),
-      this.episodicMemory.composeContext(params),
-      this.semanticMemory.composeContext(params),
-      this.proceduralMemory.composeContext(params),
-      this.projectMemory.composeContext(params),
-      this.deviceMemory.composeContext(params),
-      this.preferenceMemory.composeContext(params),
-      this.goalMemory.composeContext(params),
+    const tasks: Promise<MemoryContext[]>[] = [];
+    const p = params.policy || {
+      queryGraph: true,
+      querySemantic: true,
+      queryEpisodic: true,
+      queryPreferences: true,
+    };
+
+    if (p.queryGraph) tasks.push(this.graphMemory.composeContext(params));
+    if (p.queryEpisodic) tasks.push(this.episodicMemory.composeContext(params));
+    if (p.querySemantic) tasks.push(this.semanticMemory.composeContext(params));
+    if (p.queryProcedural) tasks.push(this.proceduralMemory.composeContext(params));
+    if (p.queryProjects) tasks.push(this.projectMemory.composeContext(params));
+    if (p.queryDevices) tasks.push(this.deviceMemory.composeContext(params));
+    if (p.queryPreferences) tasks.push(this.preferenceMemory.composeContext(params));
+    if (p.queryGoals) tasks.push(this.goalMemory.composeContext(params));
+
+    // Always include recent conversation context
+    tasks.push(
       this.conversationsService
         .getRecentMessages(params.userId, 5)
         .then((messages) =>
@@ -55,7 +65,9 @@ export class ContextComposerService {
             confidence: 100,
           })),
         ),
-    ]);
+    );
+
+    const results = await Promise.allSettled(tasks);
 
     for (const res of results) {
       if (res.status === 'fulfilled') {

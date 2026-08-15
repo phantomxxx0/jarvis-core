@@ -61,6 +61,7 @@ export class MemoryGateway {
         userId,
         query,
         limit: policy.limit,
+        policy,
       });
 
       this.logger.debug(
@@ -93,6 +94,7 @@ export class MemoryGateway {
         userId,
         query: 'user name preferred address identity personal',
         limit: 5,
+        policy: { queryPreferences: true },
       });
 
       // Extract name and preferred address from memory context.

@@ -1,9 +1,21 @@
+export interface MemoryRetrievalPolicy {
+  queryEpisodic?: boolean;
+  querySemantic?: boolean;
+  queryPreferences?: boolean;
+  queryProcedural?: boolean;
+  queryProjects?: boolean;
+  queryGoals?: boolean;
+  queryDevices?: boolean;
+  queryGraph?: boolean;
+}
+
 export interface MemoryRetrievalParams {
   query: string;
   limit?: number;
   threshold?: number;
   userId: string;
   conversationId?: string;
+  policy?: MemoryRetrievalPolicy;
 }
 
 export interface MemoryStoreParams<T = any> {

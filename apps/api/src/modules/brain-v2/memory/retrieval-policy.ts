@@ -28,6 +28,9 @@ export interface RetrievalPolicyDecision {
   /** Whether to query the knowledge graph. */
   queryGraph: boolean;
 
+  /** Whether to query user goals and plans. */
+  queryGoals: boolean;
+
   /** Maximum results to return. */
   limit: number;
 }
@@ -66,6 +69,11 @@ export class RetrievalPolicy {
         isResearch ||
         topicTags.some((t) =>
           ['project', 'repo', 'codebase', 'feature', 'task'].includes(t),
+        ),
+      queryGoals:
+        isResearch ||
+        topicTags.some((t) =>
+          ['goal', 'plan', 'objective', 'milestone', 'strategy'].includes(t),
         ),
       queryDevices: intent === 'COMMAND' || intent === 'SYSTEM',
       queryGraph: isResearch || isHigh,
