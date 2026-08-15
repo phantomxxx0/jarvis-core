@@ -24,3 +24,7 @@ Thumbs.db
 # Editors
 .vscode/
 .idea/
+.venv-openwakeword/
+/*.onnx
+/*.onnx.json
+packages/database/src/**/*.js
